@@ -1,0 +1,1228 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MG</title>
+<meta name="description" content="MG: صمّم الهودي والسويت شيرت والبنطلون بنفسك في 3D واطلبه على واتساب.">
+<link rel="icon" type="image/svg+xml" href="logo.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cairo:wght@400;600;700;900&family=Tajawal:wght@500;800&family=Lalezar&family=Reem+Kufi:wght@700&family=Amiri:wght@700&family=Bebas+Neue&family=Oswald:wght@600&family=Pacifico&family=Playfair+Display:wght@700&family=Permanent+Marker&display=swap" rel="stylesheet">
+<script src="i18n.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+<style>
+  :root {
+    --bg: #f4f4f5; --panel: #ffffff; --line: #e4e4e7; --text: #18181b; --muted: #71717a;
+    --accent: #4f46e5; --accent-soft: #eef2ff; --danger: #dc2626; --stage: #e9e9ec; --wa: #25d366;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; }
+  body { font-family: Inter, Cairo, system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+  html[lang=ar] body { font-family: Cairo, Inter, system-ui, sans-serif; }
+  header { height: 56px; display: flex; align-items: center; gap: 14px; padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 20px; letter-spacing: .5px; color: var(--text); text-decoration: none; font-family: Inter, sans-serif; }
+  .brand img { width: 32px; height: 32px; display: block; }
+  .current { font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .seg { display: inline-flex; background: var(--bg); border-radius: 10px; padding: 3px; gap: 2px; }
+  .seg button { border: 0; background: transparent; padding: 7px 12px; border-radius: 8px; font: inherit; font-weight: 500; color: var(--muted); cursor: pointer; }
+  .seg button.on { background: var(--panel); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .seg.full { display: flex; } .seg.full button { flex: 1; }
+  .spacer { flex: 1; }
+  .price-pill { font-weight: 700; white-space: nowrap; }
+
+  .app { display: grid; grid-template-columns: 290px minmax(0,1fr) 480px; height: calc(100% - 56px); }
+  aside { background: var(--panel); overflow-y: auto; padding: 16px; }
+  aside.tools { border-inline-end: 1px solid var(--line); }
+  aside.editor { border-inline-start: 1px solid var(--line); }
+  h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+  html[lang=ar] h3 { letter-spacing: 0; font-size: 13px; font-weight: 700; }
+  .sec { padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid var(--line); }
+  .sec:last-child { border-bottom: 0; }
+  .products { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .prod { border: 1.5px solid var(--line); border-radius: 10px; background: var(--panel); padding: 9px 10px; text-align: start; cursor: pointer; font: inherit; color: var(--text); }
+  .prod b { display: block; font-size: 13px; line-height: 1.3; }
+  .prod span { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .prod.on { border-color: var(--accent); background: var(--accent-soft); }
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, 32px); gap: 8px; }
+  .sw { aspect-ratio: 1; border-radius: 50%; border: 2px solid transparent; outline: 1px solid rgba(0,0,0,.15); cursor: pointer; padding: 0; }
+  .sw.on { border-color: var(--panel); outline: 2px solid var(--accent); }
+  .chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 8px; }
+  .chips button { border: 1px solid var(--line); background: var(--panel); border-radius: 99px; padding: 4px 11px; font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; color: var(--text); }
+  .chips button.on { background: var(--text); color: #fff; border-color: var(--text); }
+  .logo-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; max-height: 196px; overflow-y: auto; }
+  .logo-grid button { aspect-ratio: 1; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); padding: 7px; cursor: pointer; }
+  .logo-grid button:hover { border-color: var(--accent); }
+  .logo-grid img { width: 100%; height: 100%; display: block; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row + .row { margin-top: 8px; }
+  input[type=text], input[type=tel], textarea, select, input[type=number] { font: inherit; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; background: var(--panel); color: var(--text); }
+  textarea { resize: vertical; min-height: 42px; }
+  input[type=tel] { direction: ltr; }
+  html[dir=rtl] input[type=tel] { text-align: right; }
+  input[type=color] { width: 38px; height: 36px; border: 1px solid var(--line); border-radius: 8px; padding: 2px; background: var(--panel); cursor: pointer; flex: none; }
+  .btn { font: inherit; font-weight: 500; border: 1px solid var(--line); background: var(--panel); color: var(--text); border-radius: 8px; padding: 8px 12px; cursor: pointer; white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+  .btn:hover:not(:disabled) { border-color: #c4c4cc; }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { background: #4338ca; }
+  .btn.wa { background: var(--wa); border-color: var(--wa); color: #fff; font-weight: 700; }
+  .btn.wa:hover { background: #1fb457; }
+  .btn.danger { color: var(--danger); }
+  .btn.block { width: 100%; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .shape-btn { font-size: 20px; padding: 6px 0; }
+  .hint { color: var(--muted); font-size: 12px; line-height: 1.6; margin: 8px 0 0; }
+  .warn { color: #b45309; font-size: 12px; margin-top: 8px; display: none; }
+  .upload { display: block; border: 1.5px dashed #c4c4cc; border-radius: 10px; padding: 14px; text-align: center; color: var(--muted); cursor: pointer; }
+  .upload:hover { border-color: var(--accent); color: var(--accent); }
+  .upload input { display: none; }
+
+  .stage { position: relative; background: radial-gradient(circle at 50% 40%, #fafafa, var(--stage) 70%); overflow: hidden; }
+  #three { width: 100%; height: 100%; display: block; touch-action: none; }
+  .stage-bar { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; gap: 6px; background: var(--panel); padding: 5px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.1); }
+  .stage-bar .btn { border: 0; }
+  .stage-bar .btn.on { background: var(--accent-soft); color: var(--accent); }
+  .stage-hint { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); background: rgba(24,24,27,.78); color: #fff; padding: 6px 12px; border-radius: 99px; font-size: 12px; white-space: nowrap; pointer-events: none; transition: opacity .3s; }
+  .toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: var(--text); color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .25s; max-width: calc(100% - 32px); text-align: center; z-index: 10; }
+  .toast.show { opacity: 1; }
+
+  .ed-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .ed-wrap { position: relative; border-radius: 12px; overflow: hidden; width: 100%; max-width: 440px; margin: 0 auto; }
+  .ed-pane { display: none; position: relative; direction: ltr; }   /* the canvas is a picture of the garment, never mirrored */
+  .ed-pane.on { display: block; }
+  .print-area { position: absolute; border: 1.5px dashed rgba(255,255,255,.7); outline: 1.5px dashed rgba(0,0,0,.35); outline-offset: 0; pointer-events: none; border-radius: 4px; }
+  .print-area::after { content: attr(data-label); position: absolute; top: -20px; left: 0; font-size: 11px; color: rgba(255,255,255,.85); text-shadow: 0 1px 2px rgba(0,0,0,.5); white-space: nowrap; }
+  html[dir=rtl] .print-area::after { left: auto; right: 0; }
+  .ed-wrap.light .print-area { border-color: rgba(0,0,0,.45); outline-color: transparent; }
+  .ed-wrap.light .print-area::after { color: rgba(0,0,0,.55); text-shadow: none; }
+  .ed-wrap.mirror .print-area::before { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; border-left: 1.5px dashed #f59e0b; }
+  #brushes .btn { padding: 7px 0; font-size: 12px; }
+  #brushes .btn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  input[type=range] { flex: 1; accent-color: var(--accent); }
+  .check { display: flex; gap: 8px; align-items: center; margin-top: 8px; font-size: 13px; cursor: pointer; }
+  .out-warn { color: #b45309; font-size: 12px; margin: 8px 0 0; min-height: 18px; }
+
+  .sizes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .sizes label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--muted); text-align: center; }
+  .sizes input { text-align: center; padding: 7px 4px; }
+  .summary { margin: 14px 0; font-size: 13px; }
+  .summary div { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; color: var(--muted); }
+  .summary .total { color: var(--text); font-weight: 700; font-size: 16px; border-top: 1px solid var(--line); margin-top: 6px; padding-top: 8px; }
+
+  dialog { border: 0; border-radius: 16px; padding: 0; width: min(560px, calc(100% - 32px)); box-shadow: 0 20px 60px rgba(0,0,0,.25); color: var(--text); }
+  dialog::backdrop { background: rgba(0,0,0,.4); }
+  .dlg { padding: 22px; }
+  .dlg h2 { margin: 0 0 14px; font-size: 18px; }
+  .previews { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .previews img { width: 100%; border-radius: 10px; background: var(--stage); }
+  .dlg-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  .steps { margin: 0 0 6px; padding-inline-start: 20px; line-height: 1.8; }
+  .steps b { direction: ltr; unicode-bidi: isolate; }
+  .busy { color: var(--muted); font-size: 13px; }
+
+  @media (max-width: 1100px) {
+    .app { grid-template-columns: 1fr; height: auto; }
+    .stage { height: 62vh; }
+    aside.tools, aside.editor { border: 0; border-top: 1px solid var(--line); }
+    aside.tools { order: 2; } aside.editor { order: 3; }
+  }
+  @media (max-width: 640px) {
+    header { height: auto; flex-wrap: wrap; padding: 8px 16px; }
+    .current { display: none; }
+    .logo-grid { grid-template-columns: repeat(6, 1fr); }
+  }
+</style>
+</head>
+<body>
+<header>
+  <a class="brand" href="./"><img src="logo.svg" alt="MG logo">MG</a>
+  <span class="current" id="currentProduct"></span>
+  <div class="spacer"></div>
+  <div class="price-pill" id="headerPrice"></div>
+  <button class="btn" id="langBtn" data-i18n="lang.switch">English</button>
+</header>
+
+<main class="app">
+  <aside class="tools">
+    <div class="sec">
+      <h3 data-i18n="product.title">Product</h3>
+      <div class="seg full" id="catSeg"></div>
+      <div class="products" id="productList"></div>
+    </div>
+
+    <div class="sec">
+      <h3 data-i18n="color.title">Color</h3>
+      <div class="swatches" id="swatches"></div>
+      <div class="row" style="margin-top:10px"><input type="color" id="customColor" value="#1f2a44"><span class="hint" style="margin:0" data-i18n="color.custom"></span></div>
+    </div>
+
+    <div class="sec">
+      <h3 data-i18n="logos.title">Ready-made logos</h3>
+      <div class="chips" id="logoCats"></div>
+      <div class="logo-grid" id="logoGrid"></div>
+      <p class="hint" data-i18n="logos.hint"></p>
+    </div>
+
+    <div class="sec">
+      <h3 data-i18n="text.title">Add text</h3>
+      <div class="row"><input type="text" id="textInput" data-i18n-ph="text.placeholder" maxlength="40" dir="auto"></div>
+      <div class="row">
+        <select id="fontSel"></select>
+        <input type="color" id="textColor" value="#ffffff">
+      </div>
+      <div class="row"><button class="btn primary block" id="addText" data-i18n="text.add"></button></div>
+    </div>
+
+    <div class="sec">
+      <h3 data-i18n="image.title">Your logo / image</h3>
+      <label class="upload"><span data-i18n="image.upload"></span><input type="file" id="fileInput" accept="image/*"></label>
+      <div class="warn" id="lowResWarn" data-i18n="image.lowRes"></div>
+    </div>
+
+    <div class="sec">
+      <h3 data-i18n="shapes.title">Shapes</h3>
+      <div class="grid4">
+        <button class="btn shape-btn" data-shape="star" data-i18n-title="shape.star">★</button>
+        <button class="btn shape-btn" data-shape="heart" data-i18n-title="shape.heart">♥</button>
+        <button class="btn shape-btn" data-shape="circle" data-i18n-title="shape.circle">●</button>
+        <button class="btn shape-btn" data-shape="badge" data-i18n-title="shape.badge">▬</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h3 data-i18n="paint.title">Draw</h3>
+      <button class="btn block" id="paintToggle" data-i18n="paint.start"></button>
+      <div id="paintOpts" style="display:none">
+        <div class="grid4" id="brushes" style="margin-top:8px">
+          <button class="btn on" data-brush="pencil" data-i18n="brush.pencil"></button>
+          <button class="btn" data-brush="marker" data-i18n="brush.marker"></button>
+          <button class="btn" data-brush="spray" data-i18n="brush.spray"></button>
+          <button class="btn" data-brush="dots" data-i18n="brush.dots"></button>
+        </div>
+        <div class="row" style="margin-top:8px"><input type="color" id="brushColor" value="#ffffff"><input type="range" id="brushSize" min="1" max="40" value="6"><span id="brushSizeVal" class="hint" style="margin:0;width:22px">6</span></div>
+        <label class="check"><input type="checkbox" id="mirror"> <span data-i18n="paint.mirror"></span></label>
+        <label class="check"><input type="checkbox" id="smooth" checked> <span data-i18n="paint.smooth"></span></label>
+        <div class="grid2" style="margin-top:8px"><button class="btn" id="undoStroke" data-i18n="paint.undo"></button><button class="btn primary" id="donePaint" data-i18n="paint.done"></button></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h3 data-i18n="layer.title">Selected layer</h3>
+      <div class="row">
+        <input type="color" id="selColor" value="#ffffff" disabled>
+        <select id="selFont" disabled></select>
+      </div>
+      <div class="grid2" style="margin-top:8px">
+        <button class="btn sel" id="btnCenter" disabled data-i18n="layer.center"></button>
+        <button class="btn sel" id="btnDup" disabled data-i18n="layer.duplicate"></button>
+        <button class="btn sel" id="btnFwd" disabled data-i18n="layer.forward"></button>
+        <button class="btn sel" id="btnBack" disabled data-i18n="layer.back"></button>
+      </div>
+      <button class="btn danger block sel" id="btnDel" style="margin-top:8px" disabled data-i18n="layer.delete"></button>
+      <p class="hint" data-i18n="layer.tip"></p>
+    </div>
+  </aside>
+
+  <section class="stage">
+    <canvas id="three"></canvas>
+    <div class="stage-hint" id="stageHint" data-i18n="stage.hint"></div>
+    <div class="stage-bar">
+      <button class="btn" id="viewFront" data-i18n="view.front"></button>
+      <button class="btn" id="viewBack" data-i18n="view.back"></button>
+      <button class="btn" id="viewSide" data-i18n="view.side"></button>
+      <button class="btn" id="spinBtn" data-i18n="view.spin"></button>
+    </div>
+  </section>
+
+  <aside class="editor">
+    <div class="sec">
+      <div class="ed-head">
+        <h3 style="margin:0" data-i18n="editor.title">Design area</h3>
+        <div class="seg" id="sideSeg">
+          <button data-s="front" class="on" data-i18n="side.front"></button>
+          <button data-s="back" data-i18n="side.back"></button>
+        </div>
+      </div>
+      <div class="ed-wrap" id="edWrap">
+        <div class="ed-pane on" id="pane-front"><canvas id="ed-front"></canvas><div class="print-area" data-i18n-label="editor.printArea"></div></div>
+        <div class="ed-pane" id="pane-back"><canvas id="ed-back"></canvas><div class="print-area" data-i18n-label="editor.printArea"></div></div>
+      </div>
+      <p class="out-warn" id="outWarn"></p>
+    </div>
+
+    <div class="sec">
+      <h3 data-i18n="order.sizes">Sizes & quantity</h3>
+      <div class="sizes" id="sizes"></div>
+      <div class="summary" id="summary"></div>
+      <div class="grid2">
+        <button class="btn" id="exportBtn" data-i18n="order.download"></button>
+        <button class="btn wa" id="orderBtn" data-i18n="order.place"></button>
+      </div>
+    </div>
+  </aside>
+</main>
+<div class="toast" id="toast"></div>
+
+<dialog id="orderDlg">
+  <form class="dlg" id="orderForm">
+    <h2 data-i18n="order.review">Review your order</h2>
+    <div class="previews"><img id="pvFront" data-i18n-alt="order.frontPreview"><img id="pvBack" data-i18n-alt="order.backPreview"></div>
+    <div class="summary" id="dlgSummary"></div>
+    <div class="grid2">
+      <input type="text" id="custName" data-i18n-ph="order.name" required autocomplete="name">
+      <input type="tel" id="custPhone" data-i18n-ph="order.phone" required autocomplete="tel" pattern="[0-9+ ]{8,15}">
+    </div>
+    <div class="row"><input type="text" id="custCity" data-i18n-ph="order.city" required autocomplete="address-level1"></div>
+    <div class="row"><input type="text" id="custAddr" data-i18n-ph="order.address" required autocomplete="street-address"></div>
+    <div class="row"><textarea id="custNotes" data-i18n-ph="order.notes" rows="2"></textarea></div>
+    <p class="hint" data-i18n="order.noReturn"></p>
+    <p class="busy" id="orderBusy" hidden data-i18n="order.preparing"></p>
+    <div class="dlg-actions">
+      <button type="button" class="btn" id="orderCancel" data-i18n="order.backToEdit"></button>
+      <button class="btn wa" id="confirmOrder" data-i18n="order.confirm"></button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="sentDlg">
+  <div class="dlg">
+    <h2 data-i18n="sent.title">Last step</h2>
+    <ol class="steps"><li id="sentStep1"></li><li id="sentStep2"></li></ol>
+    <div class="dlg-actions">
+      <button class="btn" id="sentShare" hidden data-i18n="sent.share"></button>
+      <button class="btn" id="sentAgain" data-i18n="sent.again"></button>
+      <a class="btn wa" id="sentOpen" target="_blank" rel="noopener" data-i18n="sent.open"></a>
+    </div>
+    <div class="dlg-actions" style="margin-top:8px"><button class="btn" onclick="this.closest('dialog').close()" data-i18n="sent.done"></button></div>
+  </div>
+</dialog>
+
+<script>i18n.apply();</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { EW, EH, STYLES, CATEGORIES, styleOf, buildGarment, printAreas, pocketOutlines } from './garment.js';
+import SHOP from './config.js';
+
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const T = i18n.t, money = n => i18n.money(n), pct = n => i18n.pct(n);
+
+// Fabric caches each object as a bitmap capped at ~2 megapixels; exporting print files at 3600 px from
+// those caches made them blurry. Always draw objects directly instead (the canvases are small anyway).
+fabric.Object.prototype.objectCaching = false;
+
+// Design fonts. Arabic ones also carry Latin glyphs, so mixed text still renders.
+const FONTS = {
+  latin: ['Bebas Neue', 'Oswald', 'Pacifico', 'Playfair Display', 'Permanent Marker', 'Inter'],
+  arabic: ['Lalezar', 'Cairo', 'Tajawal', 'Reem Kufi', 'Amiri'],
+};
+const starterFont = () => (i18n.lang === 'ar' ? 'Lalezar' : 'Bebas Neue');
+
+const PRINT_DPI_WIDTH = 3600;                    // print files are ~12 in wide at 300 DPI
+const SIZES = ['S', 'M', 'L', 'XL', '2XL'];
+const COLORS = [
+  ['black', '#111318'], ['charcoal', '#3f4148'], ['white', '#f2f2ef'], ['grey', '#9ea3a8'], ['navy', '#1f2a44'], ['royal', '#2b59c3'],
+  ['red', '#a3202a'], ['green', '#1f5a3a'], ['sand', '#d8c8a4'], ['pink', '#f2a7c3'], ['orange', '#e57b2d'], ['purple', '#5b3a8c'],
+];
+const PRODUCTS = Object.fromEntries(Object.keys(STYLES).map(p => [p, { price: SHOP.prices[p] ?? 0, areas: printAreas(p) }]));
+
+const state = { product: 'hoodie', color: '#1f2a44', side: 'front', qty: { S: 0, M: 1, L: 0, XL: 0, '2XL': 0 } };
+
+// ---------- 2D editors (Fabric.js) ----------
+Object.assign(fabric.Object.prototype, {
+  transparentCorners: false, cornerColor: '#ffffff', cornerStrokeColor: '#4f46e5',
+  borderColor: '#4f46e5', cornerSize: 11, cornerStyle: 'circle', borderScaleFactor: 1.5,
+});
+const editors = {};
+for (const side of ['front', 'back']) {
+  const c = new fabric.Canvas('ed-' + side, { width: EW, height: EH, preserveObjectStacking: true, enableRetinaScaling: false });
+  c.on('after:render', () => markDirty(side));
+  c.on('selection:created', updateSelUI);
+  c.on('selection:updated', updateSelUI);
+  c.on('selection:cleared', updateSelUI);
+  c.on('object:modified', checkBounds);
+  c.on('object:added', () => { checkBounds(); updateSummary(); });
+  c.on('object:removed', () => { checkBounds(); updateSummary(); });
+  editors[side] = c;
+}
+const ed = () => editors[state.side];
+window.studio = { editors, state };   // handy for debugging in the browser console
+
+function layoutPrintAreas() {
+  for (const side of ['front', 'back']) {
+    const a = PRODUCTS[state.product].areas[side];
+    Object.assign($(`#pane-${side} .print-area`).style, {
+      left: a.x / EW * 100 + '%', top: a.y / EH * 100 + '%', width: a.w / EW * 100 + '%', height: a.h / EH * 100 + '%',
+    });
+  }
+}
+function fitEditors() {
+  const w = Math.min(EW, $('#edWrap').clientWidth || EW);
+  for (const c of Object.values(editors)) {
+    c.setDimensions({ width: w + 'px', height: w * EH / EW + 'px' }, { cssOnly: true });
+    c.calcOffset();
+  }
+}
+
+// ---------- Texture composition ----------
+// One 2048×1024 texture: left half = front design, right half = back design, on the garment color.
+const texCanvas = document.createElement('canvas');
+texCanvas.width = 2048; texCanvas.height = 1024;
+const tctx = texCanvas.getContext('2d');
+const designTex = new THREE.CanvasTexture(texCanvas);
+designTex.colorSpace = THREE.SRGBColorSpace;
+designTex.anisotropy = 8;
+const realPrintTex = new THREE.CanvasTexture(texCanvas);   // same image for .glb models (glTF UVs start at the top)
+realPrintTex.colorSpace = THREE.SRGBColorSpace;
+realPrintTex.flipY = false;
+realPrintTex.anisotropy = 8;
+
+let composing = false, raf = 0;
+const dirty = new Set(['front', 'back']);
+const sideCache = {};
+function markDirty(side) {
+  if (composing) return;               // toCanvasElement re-fires after:render
+  dirty.add(side);
+  if (!raf) raf = requestAnimationFrame(compose);
+}
+function compose() {
+  raf = 0;
+  composing = true;
+  for (const s of dirty) sideCache[s] = editors[s].toCanvasElement(1024 / EW);
+  dirty.clear();
+  composing = false;
+
+  tctx.fillStyle = state.color;
+  tctx.fillRect(0, 0, 2048, 1024);
+  if (styleOf(state.product).kind === 'top') drawSeams();
+  if (!realModel || realModel.userData.mg) drawPockets();      // pocket positions are only known for MG's own models
+  ['front', 'back'].forEach((s, i) => sideCache[s] && tctx.drawImage(sideCache[s], i * 1024, 0, 1024, 1024));
+  designTex.needsUpdate = true;
+  realPrintTex.needsUpdate = true;
+}
+function isLight(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 150;
+}
+const stitchColor = () => (isLight(state.color) ? 'rgba(0,0,0,0.22)' : 'rgba(255,255,255,0.18)');
+// Side seams (continuing over the shoulders) where the front and back panels meet: texture x = 0/2048 and 1024.
+function drawSeams() {
+  tctx.save();
+  for (const x of [0, 1024, 2048]) {
+    tctx.fillStyle = 'rgba(0,0,0,0.2)';
+    tctx.fillRect(x - 2, 0, 4, 1024);
+    tctx.setLineDash([6, 5]); tctx.lineWidth = 1.5; tctx.strokeStyle = stitchColor();
+    for (const dx of [-7, 7]) { tctx.beginPath(); tctx.moveTo(x + dx, 0); tctx.lineTo(x + dx, 1024); tctx.stroke(); }
+  }
+  tctx.restore();
+}
+// Pocket panels and openings (front side), from canvas px to texture px.
+function drawPockets() {
+  const { polys, openings } = pocketOutlines(state.product);
+  const tx = ([x, y]) => [x * 1024 / EW, y * 1024 / EH];
+  tctx.save();
+  for (const poly of polys) {
+    tctx.beginPath();
+    poly.map(tx).forEach(([x, y], i) => (i ? tctx.lineTo(x, y) : tctx.moveTo(x, y)));
+    tctx.closePath();
+    tctx.fillStyle = 'rgba(0,0,0,0.05)'; tctx.fill();
+    tctx.setLineDash([7, 6]); tctx.lineWidth = 2.5; tctx.strokeStyle = stitchColor(); tctx.stroke();
+  }
+  tctx.setLineDash([]); tctx.lineWidth = 7; tctx.strokeStyle = 'rgba(0,0,0,0.22)';
+  for (const [p, q] of openings) { tctx.beginPath(); tctx.moveTo(...tx(p)); tctx.lineTo(...tx(q)); tctx.stroke(); }
+  tctx.restore();
+}
+
+// ---------- 3D scene ----------
+const canvas3d = $('#three');
+const renderer = new THREE.WebGLRenderer({ canvas: canvas3d, antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// Khronos "PBR Neutral" tone mapping is made for product shots: garment colors stay true to the swatch.
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.55;
+
+const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+camera.position.set(0, 0.3, 8.6);
+let viewDistance = 8.6, lastDistance = 8.6;
+const controls = new OrbitControls(camera, canvas3d);
+controls.target.set(0, -0.05, 0);
+controls.enableDamping = true;
+controls.enablePan = false;
+controls.minDistance = 4;
+controls.maxDistance = 13;
+controls.minPolarAngle = 0.35;
+controls.maxPolarAngle = 2.2;
+controls.autoRotateSpeed = 2.2;
+
+// Photo-studio lighting: a soft key light that casts shadows, a fill from the other side and a rim light.
+const key = new THREE.DirectionalLight(0xffffff, 2.1);
+key.position.set(2.5, 5, 5);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+Object.assign(key.shadow.camera, { left: -3, right: 3, top: 3, bottom: -3, near: 1, far: 16 });
+key.shadow.bias = -0.0004;
+key.shadow.normalBias = 0.035;
+scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff, 0.55);
+fill.position.set(-5, 1.5, 3);
+scene.add(fill);
+const rim = new THREE.DirectionalLight(0xffffff, 0.9);
+rim.position.set(-3, 4, -6);
+scene.add(rim);
+
+// Procedural knit texture used as a bump map so the fabric doesn't look like plastic.
+function knitTexture(ribbed) {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  g.fillStyle = '#808080'; g.fillRect(0, 0, 128, 128);
+  for (let x = 0; x < 128; x += 4) {
+    g.fillStyle = ribbed ? (x % 8 ? '#5a5a5a' : '#a8a8a8') : (x % 8 ? '#787878' : '#8a8a8a');
+    g.fillRect(x, 0, ribbed ? 4 : 2, 128);
+  }
+  const img = g.getImageData(0, 0, 128, 128);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const n = (Math.random() - 0.5) * 34;
+    img.data[i] += n; img.data[i + 1] += n; img.data[i + 2] += n;
+  }
+  g.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+const knit = knitTexture(false); knit.repeat.set(40, 20);
+const rib = knitTexture(true); rib.repeat.set(30, 1);
+
+// Cotton fleece: rough, with "sheen" for the soft fuzzy glow fabric gets at grazing angles.
+const fabricProps = { bumpMap: knit, bumpScale: 0.6, roughness: 0.92, sheen: 1, sheenRoughness: 0.6, side: THREE.DoubleSide };
+const torsoMat = new THREE.MeshPhysicalMaterial({ ...fabricProps, map: designTex });
+const fabricMat = new THREE.MeshPhysicalMaterial({ ...fabricProps });
+const ribMat = new THREE.MeshPhysicalMaterial({ ...fabricProps, bumpMap: rib, bumpScale: 1.4, roughness: 0.95 });
+const stringMat = new THREE.MeshStandardMaterial({ color: 0xf4f4f0, roughness: 0.8 });
+const tipMat = new THREE.MeshStandardMaterial({ color: 0xc9ccd1, metalness: 0.8, roughness: 0.3 });
+const garmentMats = { torso: torsoMat, fabric: fabricMat, rib: ribMat, string: stringMat, tip: tipMat };
+
+// Built-in garments, built the first time each product is shown (geometry lives in garment.js).
+const garment = new THREE.Group();
+scene.add(garment);
+const garments = {};
+function garmentFor(product) {
+  if (!garments[product]) {
+    garments[product] = buildGarment(product, garmentMats);
+    garment.add(garments[product].group);
+  }
+  return garments[product];
+}
+
+// Soft contact shadow under the garment (product-photo style)
+const sh = document.createElement('canvas'); sh.width = sh.height = 128;
+const shg = sh.getContext('2d');
+const grad = shg.createRadialGradient(64, 64, 0, 64, 64, 64);
+grad.addColorStop(0, 'rgba(0,0,0,0.3)'); grad.addColorStop(1, 'rgba(0,0,0,0)');
+shg.fillStyle = grad; shg.fillRect(0, 0, 128, 128);
+const shadow = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 1.6), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(sh), transparent: true, depthWrite: false }));
+shadow.rotation.x = -Math.PI / 2;
+scene.add(shadow);
+
+// ---------- 3D model files (.glb) ----------
+// Convention (MODEL_BRIEF.md): front faces +Z; meshes named "print" carry the design with the same UV layout
+// as the texture (left half front, right half back, top at the top); "rib" = ribbed knit; "trim" keeps its look.
+let realModel = null, printMeshes = [];
+const gltfLoader = new GLTFLoader();
+const modelCache = {};
+
+async function loadProductModel() {
+  const product = state.product;
+  if (realModel) { scene.remove(realModel); realModel = null; printMeshes = []; }
+  garment.visible = true;
+  const url = SHOP.models[product];
+  if (url) {
+    try {
+      const gltf = await (modelCache[url] ||= gltfLoader.loadAsync(url));
+      if (state.product !== product) return;      // user switched product while loading
+      const root = gltf.scene.clone(true), prints = [];
+      root.traverse(o => {
+        if (!o.isMesh) return;
+        o.castShadow = o.receiveShadow = true;
+        const src = Array.isArray(o.material) ? o.material[0] : o.material;
+        const name = `${o.name} ${src?.name || ''}`;
+        if (/trim/i.test(name)) return;
+        const isPrint = /print/i.test(name), isRib = /rib/i.test(name);
+        // Keep the model's own fabric detail (normal/roughness/AO maps); without one, use our knit texture.
+        const m = new THREE.MeshPhysicalMaterial({
+          normalMap: src?.normalMap || null, roughnessMap: src?.roughnessMap || null, aoMap: src?.aoMap || null,
+          bumpMap: src?.normalMap ? null : (isRib ? rib : knit), bumpScale: isRib ? 1.4 : 0.6,
+          roughness: src?.roughness ?? 0.92, sheen: 1, sheenRoughness: 0.6, side: THREE.DoubleSide,
+        });
+        if (isPrint) { m.map = realPrintTex; prints.push(o); } else m.userData.tint = isRib ? 0.88 : 1;
+        o.material = m;
+      });
+      if (!prints.length) throw new Error('no mesh named "print"');
+      root.userData.mg = !!root.getObjectByName('MG_' + product);
+      // MG's own exports are in meters (1 unit = 0.27 m); other models are scaled to a similar size.
+      if (root.userData.mg) root.scale.setScalar(1 / 0.27);
+      else {
+        const s = new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3());
+        root.scale.setScalar(3.5 / Math.max(s.y, s.x * 0.8));
+      }
+      const c = new THREE.Box3().setFromObject(root).getCenter(new THREE.Vector3());
+      root.position.set(-c.x, -0.05 - c.y, -c.z);
+      realModel = root; printMeshes = prints;
+      garment.visible = false;
+      scene.add(root);
+    } catch (e) {
+      toast(T('toast.modelFailed', { msg: e.message }));
+    }
+  }
+  applyGarment();
+}
+
+function applyGarment() {
+  const g = garmentFor(state.product);
+  for (const [p, x] of Object.entries(garments)) x.group.visible = p === state.product;
+  // Fabric fuzz catches light as a paler version of the garment color.
+  const sheen = new THREE.Color(state.color).lerp(new THREE.Color(0xffffff), 0.35);
+  realModel?.traverse(o => {
+    if (!o.isMesh) return;
+    o.material.sheenColor?.copy(sheen);
+    if (o.material.userData.tint) o.material.color.set(state.color).multiplyScalar(o.material.userData.tint);
+  });
+  fabricMat.color.set(state.color);
+  ribMat.color.set(state.color).multiplyScalar(0.88);
+  for (const m of [torsoMat, fabricMat, ribMat]) m.sheenColor.copy(sheen);
+  const bottom = realModel ? new THREE.Box3().setFromObject(realModel).min.y : g.bottom;
+  shadow.position.y = bottom - 0.02;
+  // Keep the whole garment in view: tall pants need the camera further back than tops.
+  viewDistance = Math.max(8.6, -2 * (bottom + 0.05) * 2.45);
+  if (viewDistance !== lastDistance) {
+    lastDistance = viewDistance;
+    camera.position.sub(controls.target).setLength(viewDistance).add(controls.target);
+  }
+  $('#edWrap').style.background = state.color;
+  $('#edWrap').classList.toggle('light', isLight(state.color));
+  layoutPrintAreas();
+  dirty.add('front'); dirty.add('back');
+  compose();
+  checkBounds();
+  updateSummary();
+}
+
+// ---------- Camera views ----------
+let tween = null;
+function goToView(azimuth) {
+  const sph = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
+  let from = sph.theta, to = azimuth;
+  while (to - from > Math.PI) to -= Math.PI * 2;
+  while (to - from < -Math.PI) to += Math.PI * 2;
+  tween = { from, to, phiFrom: sph.phi, phiTo: Math.PI / 2 - 0.04, r: sph.radius, t0: performance.now() };
+}
+function stepTween(now) {
+  if (!tween) return;
+  const k = Math.min(1, (now - tween.t0) / 650), e = 1 - Math.pow(1 - k, 3);
+  const sph = new THREE.Spherical(tween.r, tween.phiFrom + (tween.phiTo - tween.phiFrom) * e, tween.from + (tween.to - tween.from) * e);
+  camera.position.copy(controls.target).add(new THREE.Vector3().setFromSpherical(sph));
+  if (k === 1) tween = null;
+}
+$('#viewFront').onclick = () => { setSide('front'); goToView(0); };
+$('#viewBack').onclick = () => { setSide('back'); goToView(Math.PI); };
+$('#viewSide').onclick = () => goToView(Math.PI / 2);
+$('#spinBtn').onclick = e => { controls.autoRotate = !controls.autoRotate; e.currentTarget.classList.toggle('on', controls.autoRotate); };
+controls.addEventListener('start', () => { tween = null; $('#stageHint').style.opacity = 0; });
+
+// ---------- Click on the garment to place the selected layer ----------
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+let downAt = null;
+function hitGarment(ev) {
+  const r = canvas3d.getBoundingClientRect();
+  ndc.set((ev.clientX - r.left) / r.width * 2 - 1, -(ev.clientY - r.top) / r.height * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  return ray.intersectObjects(realModel ? printMeshes : [garmentFor(state.product).torso], false)[0];
+}
+canvas3d.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
+canvas3d.addEventListener('pointerup', e => {
+  if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5) return;
+  const hit = hitGarment(e);
+  if (!hit) return;
+  const side = hit.uv.x < 0.5 ? 'front' : 'back';
+  const cx = (hit.uv.x - (side === 'back' ? 0.5 : 0)) * 2 * EW;
+  const cy = (realModel ? hit.uv.y : 1 - hit.uv.y) * EH;   // glTF UVs run top-down
+  const prevSide = state.side, obj = paint.on ? null : editors[prevSide].getActiveObject();
+  if (obj && obj.type === 'activeSelection' && prevSide !== side) return toast(T('toast.oneLayer'));
+  setSide(side);
+  if (obj && prevSide !== side) {           // carry the layer over to the other side
+    editors[prevSide].remove(obj);
+    editors[side].add(obj);
+  }
+  if (obj) {
+    obj.setPositionByOrigin(new fabric.Point(cx, cy), 'center', 'center');
+    obj.setCoords();
+    editors[side].setActiveObject(obj).requestRenderAll();
+    checkBounds();
+  } else if (!paint.on) {
+    toast(T('toast.selectFirst'));
+  }
+});
+canvas3d.addEventListener('pointermove', e => { canvas3d.style.cursor = hitGarment(e) ? 'crosshair' : 'grab'; });
+
+// ---------- Editor actions ----------
+function setSide(side) {
+  if (state.side === side) return;
+  editors[state.side].discardActiveObject().requestRenderAll();
+  state.side = side;
+  $$('#sideSeg button').forEach(b => b.classList.toggle('on', b.dataset.s === side));
+  $$('.ed-pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + side));
+  fitEditors();
+  updateSelUI();
+  checkBounds();
+}
+$$('#sideSeg button').forEach(b => b.onclick = () => { setSide(b.dataset.s); goToView(b.dataset.s === 'front' ? 0 : Math.PI); });
+
+function placeNew(obj, widthFrac = 0.7) {
+  if (paint.on) setPaint(false);
+  const a = PRODUCTS[state.product].areas[state.side];
+  const s = Math.min(a.w * widthFrac / obj.width, a.h * 0.8 / obj.height);
+  obj.set({ scaleX: s, scaleY: s });
+  obj.setPositionByOrigin(new fabric.Point(a.x + a.w / 2, a.y + a.h / 2), 'center', 'center');
+  ed().add(obj).setActiveObject(obj).requestRenderAll();
+}
+async function loadFont(f) { try { await document.fonts.load(`48px "${f}"`, 'Aa أب'); } catch {} }
+function fillFontSelects() {
+  for (const sel of [$('#fontSel'), $('#selFont')]) {
+    const keep = sel.value;
+    sel.innerHTML = '';
+    for (const group of i18n.lang === 'ar' ? ['arabic', 'latin'] : ['latin', 'arabic']) {
+      const og = document.createElement('optgroup');
+      og.label = T('fonts.' + group);
+      FONTS[group].forEach(f => og.append(new Option(f, f)));
+      sel.append(og);
+    }
+    sel.value = keep || starterFont();
+  }
+}
+const hasArabic = s => /[؀-ۿ]/.test(s);
+
+$('#addText').onclick = async () => {
+  const text = $('#textInput').value.trim();
+  if (!text) return;
+  // Latin-only fonts have no Arabic letters; switch to an Arabic font so the text doesn't fall back.
+  const font = hasArabic(text) && FONTS.latin.includes($('#fontSel').value) ? 'Lalezar' : $('#fontSel').value;
+  await loadFont(font);
+  placeNew(new fabric.IText(text, { fontFamily: font, fill: $('#textColor').value, fontSize: 64, textAlign: 'center' }), 0.85);
+};
+$('#textInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('#addText').click(); });
+
+$('#fileInput').onchange = e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  if (file.type.includes('svg')) {
+    // SVGs stay vector, so they print sharp at any size.
+    reader.onload = () => fabric.loadSVGFromString(reader.result, (objects, options) => {
+      $('#lowResWarn').style.display = 'none';
+      placeNew(fabric.util.groupSVGElements(objects, options), 0.6);
+    });
+    reader.readAsText(file);
+  } else {
+    reader.onload = () => fabric.Image.fromURL(reader.result, img => {
+      $('#lowResWarn').style.display = img.width < 1500 ? 'block' : 'none';
+      placeNew(img, 0.6);
+    });
+    reader.readAsDataURL(file);
+  }
+  e.target.value = '';
+};
+
+const SHAPES = {
+  star: () => new fabric.Path('M50 0 L61 35 L98 35 L68 57 L79 91 L50 70 L21 91 L32 57 L2 35 L39 35 Z', { fill: '#facc15' }),
+  heart: () => new fabric.Path('M50 88 C20 65 0 48 0 27 C0 11 12 0 27 0 C37 0 45 6 50 14 C55 6 63 0 73 0 C88 0 100 11 100 27 C100 48 80 65 50 88 Z', { fill: '#ef4444' }),
+  circle: () => new fabric.Circle({ radius: 50, fill: '#ffffff' }),
+  badge: () => new fabric.Rect({ width: 200, height: 70, rx: 14, ry: 14, fill: '#ffffff' }),
+};
+$$('[data-shape]').forEach(b => b.onclick = () => placeNew(SHAPES[b.dataset.shape](), b.dataset.shape === 'badge' ? 0.8 : 0.35));
+
+// ---------- Ready-made logos ----------
+let logoSets = [], logoCat = null;
+async function loadLogos() {
+  try { logoSets = await (await fetch('logos/manifest.json')).json(); } catch { return; }
+  logoCat = logoSets[0]?.cat;
+  renderLogos();
+}
+function renderLogos() {
+  $('#logoCats').innerHTML = '';
+  for (const set of logoSets) {
+    const b = document.createElement('button');
+    b.textContent = T('logos.' + set.cat);
+    b.classList.toggle('on', set.cat === logoCat);
+    b.onclick = () => { logoCat = set.cat; renderLogos(); };
+    $('#logoCats').append(b);
+  }
+  $('#logoGrid').innerHTML = '';
+  for (const id of logoSets.find(s => s.cat === logoCat)?.items || []) {
+    const b = document.createElement('button');
+    b.title = id;
+    b.innerHTML = `<img alt="" loading="lazy" src="logos/${id}.svg">`;
+    b.onclick = () => addLogo(id);
+    $('#logoGrid').append(b);
+  }
+}
+// currentColor becomes white on dark garments and near-black on light ones; #fffffe marks "cut-out" parts,
+// painted in the garment color. Logos stay vector, so they print sharp.
+async function addLogo(id) {
+  try {
+    const color = isLight(state.color) ? '#111111' : '#ffffff';
+    const svg = (await (await fetch(`logos/${id}.svg`)).text())
+      .replace(/currentColor/g, color).replace(/#fffffe/gi, state.color);
+    await Promise.all(['Lalezar', 'Bebas Neue'].map(loadFont));
+    fabric.loadSVGFromString(svg, (objects, options) => {
+      for (const o of objects) if (typeof o.fill === 'string' && o.fill.toLowerCase() === state.color.toLowerCase()) o.cutout = true;
+      const obj = fabric.util.groupSVGElements(objects, options);
+      placeNew(obj, 0.45);
+    });
+  } catch { toast(T('toast.logoFailed')); }
+}
+
+// Recolor a layer; for groups (logos, SVGs) every part except cut-outs.
+function recolor(o, color) {
+  if (o.type === 'group') return o.getObjects().forEach(c => recolor(c, color));
+  if (o.cutout) return;
+  if (typeof o.fill === 'string' && o.fill !== 'none' && o.fill !== '' && o.fill !== 'transparent') o.set('fill', color);
+  if (typeof o.stroke === 'string' && o.stroke !== 'none' && o.stroke !== '') o.set('stroke', color);
+}
+function layerColor(o) {
+  if (o.type === 'group') { for (const c of o.getObjects()) { const v = layerColor(c); if (v) return v; } return null; }
+  if (o.cutout) return null;
+  for (const v of [o.fill, o.stroke]) if (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v)) return v;
+  return null;
+}
+function updateSelUI() {
+  const o = paint.on ? null : ed().getActiveObject();
+  $$('.sel').forEach(b => b.disabled = !o);
+  const color = o && o.type !== 'image' ? layerColor(o) : null;
+  $('#selColor').disabled = !color;
+  if (color) $('#selColor').value = color;
+  const isText = o && o.type === 'i-text';
+  $('#selFont').disabled = !isText;
+  if (isText) $('#selFont').value = o.fontFamily;
+}
+$('#selColor').oninput = e => { const o = ed().getActiveObject(); if (o) { recolor(o, e.target.value); o.dirty = true; ed().requestRenderAll(); } };
+$('#selFont').onchange = async e => {
+  const o = ed().getActiveObject();
+  if (!o) return;
+  await loadFont(e.target.value);
+  o.set('fontFamily', e.target.value); o.setCoords(); ed().requestRenderAll(); checkBounds();
+};
+$('#btnCenter').onclick = () => {
+  const o = ed().getActiveObject(), a = PRODUCTS[state.product].areas[state.side];
+  o.setPositionByOrigin(new fabric.Point(a.x + a.w / 2, o.getCenterPoint().y), 'center', 'center');
+  o.setCoords(); ed().requestRenderAll(); checkBounds();
+};
+$('#btnDup').onclick = () => ed().getActiveObject().clone(c => {
+  c.set({ left: c.left + 14, top: c.top + 14 });
+  ed().add(c).setActiveObject(c).requestRenderAll();
+});
+$('#btnFwd').onclick = () => { ed().getActiveObject().bringForward(); ed().requestRenderAll(); };
+$('#btnBack').onclick = () => { ed().getActiveObject().sendBackwards(); ed().requestRenderAll(); };
+$('#btnDel').onclick = deleteSelected;
+function deleteSelected() {
+  const c = ed(), o = c.getActiveObject();
+  if (!o || o.isEditing) return;
+  (o.type === 'activeSelection' ? o.getObjects() : [o]).forEach(x => c.remove(x));
+  c.discardActiveObject().requestRenderAll();
+  updateSelUI();
+}
+document.addEventListener('keydown', e => {
+  if ((e.key === 'Delete' || e.key === 'Backspace') && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName) && !$('dialog[open]')) {
+    e.preventDefault(); deleteSelected();
+  }
+});
+
+function checkBounds() {
+  const a = PRODUCTS[state.product].areas[state.side];
+  const out = ed().getObjects().some(o => {
+    const r = o.getBoundingRect(true, true);
+    return r.left < a.x - 1 || r.top < a.y - 1 || r.left + r.width > a.x + a.w + 1 || r.top + r.height > a.y + a.h + 1;
+  });
+  $('#outWarn').textContent = out ? T('editor.outside') : '';
+}
+
+// ---------- Paint ----------
+const paint = { on: false, brush: 'pencil' };
+function makeBrush(c) {
+  const color = $('#brushColor').value, size = +$('#brushSize').value;
+  let b;
+  if (paint.brush === 'spray') { b = new fabric.SprayBrush(c); b.width = size * 3; b.density = 25; }
+  else if (paint.brush === 'dots') { b = new fabric.CircleBrush(c); b.width = size * 1.5; }
+  else {
+    b = new fabric.PencilBrush(c);
+    b.width = paint.brush === 'marker' ? size * 2.5 : size;
+    b.decimate = $('#smooth').checked ? 8 : 0.4;   // higher decimate = fewer points = smoother line
+  }
+  b.color = paint.brush === 'marker' ? color + 'b3' : color;
+  return b;
+}
+function refreshBrushes() {
+  for (const c of Object.values(editors)) {
+    c.isDrawingMode = paint.on;
+    if (paint.on) c.freeDrawingBrush = makeBrush(c);
+  }
+}
+function setPaint(on) {
+  paint.on = on;
+  if (on) ed().discardActiveObject().requestRenderAll();
+  $('#paintOpts').style.display = on ? 'block' : 'none';
+  $('#paintToggle').dataset.i18n = on ? 'paint.active' : 'paint.start';
+  $('#paintToggle').textContent = T($('#paintToggle').dataset.i18n);
+  $('#paintToggle').classList.toggle('primary', on);
+  refreshBrushes();
+  updateSelUI();
+}
+$('#paintToggle').onclick = () => setPaint(!paint.on);
+$('#donePaint').onclick = () => setPaint(false);
+$$('#brushes button').forEach(b => b.onclick = () => {
+  paint.brush = b.dataset.brush;
+  $$('#brushes button').forEach(x => x.classList.toggle('on', x === b));
+  refreshBrushes();
+});
+$('#brushColor').oninput = refreshBrushes;
+$('#smooth').onchange = refreshBrushes;
+$('#brushSize').oninput = e => { $('#brushSizeVal').textContent = e.target.value; refreshBrushes(); };
+$('#mirror').onchange = e => $('#edWrap').classList.toggle('mirror', e.target.checked);
+
+// Mirror mode: every stroke gets a flipped twin across the print area's center line.
+for (const [side, c] of Object.entries(editors)) {
+  c.on('path:created', ({ path }) => {
+    if (!$('#mirror').checked) return;
+    const a = PRODUCTS[state.product].areas[side], cx = a.x + a.w / 2;
+    path.clone(m => {
+      const ctr = path.getCenterPoint();
+      m.set({ flipX: !path.flipX });
+      m.setPositionByOrigin(new fabric.Point(2 * cx - ctr.x, ctr.y), 'center', 'center');
+      m.mirrorOf = path;
+      c.add(m).requestRenderAll();
+    });
+  });
+}
+$('#undoStroke').onclick = () => {
+  const c = ed(), last = c.getObjects().at(-1);
+  if (!last) return;
+  c.remove(last);
+  if (last.mirrorOf) c.remove(last.mirrorOf);
+  c.requestRenderAll();
+};
+
+// ---------- Product / color ----------
+let category = styleOf(state.product).category;
+function renderProducts() {
+  $('#catSeg').innerHTML = '';
+  for (const cat of CATEGORIES) {
+    const b = document.createElement('button');
+    b.textContent = T('cat.' + cat);
+    b.classList.toggle('on', cat === category);
+    b.onclick = () => { category = cat; renderProducts(); };
+    $('#catSeg').append(b);
+  }
+  $('#productList').innerHTML = '';
+  for (const p of Object.keys(STYLES).filter(p => STYLES[p].category === category)) {
+    const b = document.createElement('button');
+    b.className = 'prod' + (p === state.product ? ' on' : '');
+    b.innerHTML = '<b></b><span></span>';
+    b.querySelector('b').textContent = T('product.' + p);
+    b.querySelector('span').textContent = money(PRODUCTS[p].price);
+    b.onclick = () => setProduct(p);
+    $('#productList').append(b);
+  }
+  $('#currentProduct').textContent = T('product.' + state.product);
+}
+function setProduct(p) {
+  state.product = p;
+  category = styleOf(p).category;
+  renderProducts();
+  loadProductModel();
+}
+COLORS.forEach(([name, hex]) => {
+  const b = document.createElement('button');
+  b.className = 'sw'; b.style.background = hex; b.dataset.hex = hex; b.dataset.name = name;
+  b.onclick = () => setColor(hex);
+  $('#swatches').append(b);
+});
+$('#customColor').oninput = e => setColor(e.target.value);
+function setColor(c) {
+  state.color = c;
+  $$('.sw').forEach(s => s.classList.toggle('on', s.dataset.hex === c));
+  applyGarment();
+}
+function colorLabel() {
+  const named = COLORS.find(([, hex]) => hex === state.color);
+  return named ? `${T('color.' + named[0])} (${state.color})` : state.color;
+}
+function labelSwatches() { $$('.sw').forEach(s => { s.title = T('color.' + s.dataset.name); }); }
+
+// ---------- Order ----------
+SIZES.forEach(s => {
+  const l = document.createElement('label');
+  l.innerHTML = `${s}<input type="number" min="0" max="999" value="${state.qty[s]}">`;
+  l.querySelector('input').oninput = e => { state.qty[s] = Math.max(0, parseInt(e.target.value) || 0); updateSummary(); };
+  $('#sizes').append(l);
+});
+function quote() {
+  const sides = ['front', 'back'].filter(s => editors[s].getObjects().length);
+  const pcs = Object.values(state.qty).reduce((a, b) => a + b, 0);
+  const unit = PRODUCTS[state.product].price + sides.length * SHOP.printSidePrice;
+  const subtotal = unit * pcs + state.qty['2XL'] * SHOP.xxlSurcharge;
+  const discRate = SHOP.bulkDiscounts.find(([min]) => pcs >= min)?.[1] || 0;
+  const discount = subtotal * discRate;
+  return { sides, pcs, unit, subtotal, discRate, discount, total: subtotal - discount };
+}
+const sidesLabel = sides => T('sides.' + (sides.length === 2 ? 'both' : sides[0] || 'none'));
+function summaryHTML(q) {
+  const [minPcs, minRate] = SHOP.bulkDiscounts.at(-1) || [10, 0.1];
+  return `
+    <div><span>${T('sum.item', { product: T('product.' + state.product), sides: sidesLabel(q.sides) })}</span><span>${T('sum.perPiece', { price: money(q.unit) })}</span></div>
+    <div><span>${T('sum.pieces')}</span><span>${i18n.num(q.pcs)}</span></div>
+    ${state.qty['2XL'] ? `<div><span>${T('sum.xxl')}</span><span>${money(state.qty['2XL'] * SHOP.xxlSurcharge)}</span></div>` : ''}
+    ${q.discRate ? `<div><span>${T('sum.bulk', { rate: pct(q.discRate * 100) })}</span><span>−${money(q.discount)}</span></div>`
+                 : `<div><span>${T('sum.bulkLabel')}</span><span>${T('sum.bulkHint', { rate: pct(minRate * 100), n: i18n.num(minPcs) })}</span></div>`}
+    <div class="total"><span>${T('sum.total')}</span><span>${money(q.total)}</span></div>`;
+}
+function updateSummary() {
+  const q = quote();
+  $('#summary').innerHTML = summaryHTML(q);
+  $('#headerPrice').textContent = `${money(q.total)}${i18n.sep}${i18n.pcs(q.pcs)}`;
+}
+
+// High-resolution print file of one side: transparent PNG of the print area, ~3600 px wide.
+function printFile(side) {
+  const a = PRODUCTS[state.product].areas[side];
+  return editors[side].toDataURL({ format: 'png', left: a.x, top: a.y, width: a.w, height: a.h, multiplier: PRINT_DPI_WIDTH / a.w });
+}
+function download(href, name) {
+  const link = document.createElement('a');
+  link.href = href; link.download = name;
+  document.body.append(link); link.click(); link.remove();
+}
+$('#exportBtn').onclick = () => {
+  const sides = quote().sides;
+  if (!sides.length) return toast(T('toast.addDesign'));
+  for (const s of sides) download(printFile(s), `MG-${state.product}-print-${s}.png`);
+};
+
+function snapshot(azimuth) {
+  const saved = camera.position.clone();
+  const spin = controls.autoRotate; controls.autoRotate = false;
+  camera.position.copy(controls.target).add(new THREE.Vector3().setFromSpherical(new THREE.Spherical(viewDistance, Math.PI / 2 - 0.04, azimuth)));
+  camera.lookAt(controls.target);
+  renderer.render(scene, camera);
+  const url = canvas3d.toDataURL('image/png');
+  camera.position.copy(saved); camera.lookAt(controls.target);
+  controls.autoRotate = spin;
+  return url;
+}
+$('#orderBtn').onclick = () => {
+  const q = quote();
+  if (!q.pcs) return toast(T('toast.chooseSize'));
+  for (const c of Object.values(editors)) c.discardActiveObject().renderAll();
+  compose();
+  $('#pvFront').src = snapshot(0);
+  $('#pvBack').src = snapshot(Math.PI);
+  $('#dlgSummary').innerHTML = summaryHTML(q);
+  $('#orderBusy').hidden = true;
+  $('#orderDlg').showModal();
+};
+$('#orderCancel').onclick = () => $('#orderDlg').close();
+
+// The order message goes to the shop's WhatsApp. Numbers use Latin digits so the shop can copy them.
+function orderMessage(order) {
+  const q = order.quote, sizes = SIZES.filter(s => state.qty[s]).map(s => `${s}×${state.qty[s]}`).join('، ');
+  return [
+    T('msg.title'),
+    `${T('msg.code')}: ${order.code}`,
+    `${T('msg.product')}: ${T('product.' + state.product)}`,
+    `${T('msg.color')}: ${colorLabel()}`,
+    `${T('msg.sizes')}: ${sizes}`,
+    `${T('msg.print')}: ${sidesLabel(q.sides)}`,
+    `${T('msg.total')}: ${Math.round(q.total * 100) / 100} EGP`,
+    '—',
+    `${T('msg.name')}: ${order.name}`,
+    `${T('msg.phone')}: ${order.phone}`,
+    `${T('msg.city')}: ${order.city}`,
+    `${T('msg.address')}: ${order.address}`,
+    order.notes && `${T('msg.notes')}: ${order.notes}`,
+    '',
+    T('msg.files', { file: order.zipName }),
+  ].filter(l => l !== undefined && l !== false && l !== null).join('\n');
+}
+const dataUrlToBlob = url => fetch(url).then(r => r.blob());
+const loadImage = src => new Promise((ok, fail) => { const i = new Image(); i.onload = () => ok(i); i.onerror = fail; i.src = src; });
+
+// One A4-style summary image for the shop: previews, details and the designs.
+async function orderSheet(order) {
+  const W = 1240, H = 1754, c = document.createElement('canvas'), g = c.getContext('2d');
+  c.width = W; c.height = H;
+  const rtl = i18n.lang === 'ar', font = rtl ? 'Cairo' : 'Inter';
+  await Promise.all([loadFont('Cairo'), loadFont('Inter')]);
+  g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+  g.drawImage(await loadImage('logo.svg'), 60, 50, 90, 90);
+  g.fillStyle = '#18181b'; g.font = `800 56px Inter`; g.fillText('MG', 170, 118);
+  g.direction = rtl ? 'rtl' : 'ltr'; g.textAlign = rtl ? 'right' : 'left';
+  const X = rtl ? W - 60 : 60;
+  g.font = `700 40px ${font}`; g.fillText(`${T('sheet.title')} ${order.code}`, rtl ? X : 400, 100);
+  g.font = `400 26px ${font}`; g.fillStyle = '#71717a'; g.fillText(i18n.date(Date.now()), rtl ? X : 400, 140);
+  const [front, back] = await Promise.all([loadImage(order.previewFront), loadImage(order.previewBack)]);
+  g.fillStyle = '#f1f1f3'; g.fillRect(60, 190, 545, 545); g.fillRect(635, 190, 545, 545);
+  g.drawImage(front, 60, 190, 545, 545); g.drawImage(back, 635, 190, 545, 545);
+  const q = order.quote, sizes = SIZES.filter(s => state.qty[s]).map(s => `${s}×${state.qty[s]}`).join('   ');
+  const rows = [
+    [T('msg.product'), T('product.' + state.product)], [T('msg.color'), colorLabel()], [T('msg.sizes'), sizes],
+    [T('msg.print'), sidesLabel(q.sides)], [T('msg.total'), money(q.total)], [T('msg.name'), order.name],
+    [T('msg.phone'), order.phone], [T('msg.city'), order.city], [T('msg.address'), order.address],
+  ];
+  if (order.notes) rows.push([T('msg.notes'), order.notes]);
+  let y = 800;
+  for (const [k, v] of rows) {
+    g.font = `700 28px ${font}`; g.fillStyle = '#71717a'; g.fillText(k, X, y);
+    g.font = `600 30px ${font}`; g.fillStyle = '#18181b'; g.fillText(String(v).slice(0, 60), rtl ? X - 260 : X + 260, y);
+    y += 52;
+  }
+  // Design thumbnails on a checkerboard (prints are transparent)
+  let x = 60;
+  for (const side of q.sides) {
+    const img = await loadImage(order.prints[side]);
+    const h = 300, w = Math.min(540, img.width / img.height * h);
+    for (let cy = 0; cy < h; cy += 20) for (let cx = 0; cx < w; cx += 20) {
+      g.fillStyle = (cx + cy) / 20 % 2 ? '#ffffff' : '#e9e9ec'; g.fillRect(x + cx, y + 10 + cy, 20, 20);
+    }
+    g.drawImage(img, x, y + 10, w, h);
+    g.font = `600 24px ${font}`; g.fillStyle = '#71717a'; g.textAlign = 'left'; g.direction = 'ltr';
+    g.fillText(T('side.' + side), x, y + h + 44);
+    g.direction = rtl ? 'rtl' : 'ltr'; g.textAlign = rtl ? 'right' : 'left';
+    x += w + 40;
+  }
+  return c.toDataURL('image/png');
+}
+
+let lastOrder = null;
+$('#orderForm').onsubmit = async e => {
+  e.preventDefault();
+  $('#orderBusy').hidden = false;
+  $('#confirmOrder').disabled = true;
+  try {
+    const q = quote(), code = 'MG-' + Date.now().toString(36).slice(-5).toUpperCase();
+    const order = {
+      code, quote: q, zipName: `${code}.zip`,
+      name: $('#custName').value.trim(), phone: $('#custPhone').value.trim(), city: $('#custCity').value.trim(),
+      address: $('#custAddr').value.trim(), notes: $('#custNotes').value.trim(),
+      previewFront: $('#pvFront').src, previewBack: $('#pvBack').src,
+      prints: Object.fromEntries(q.sides.map(s => [s, printFile(s)])),
+    };
+    const sheet = await orderSheet(order);
+    // Everything the workshop needs in one file: summary sheet, print files, previews and the editable design.
+    const zip = new JSZip(), dir = zip.folder(code);
+    const add = async (name, url) => dir.file(name, await dataUrlToBlob(url));
+    await add('order.png', sheet);
+    for (const s of q.sides) await add(`print-${s}.png`, order.prints[s]);
+    await add('preview-front.png', order.previewFront);
+    await add('preview-back.png', order.previewBack);
+    dir.file('order.txt', orderMessage(order));
+    dir.file('design.json', JSON.stringify({ product: state.product, color: state.color, sizes: state.qty,
+      front: editors.front.toJSON(), back: editors.back.toJSON() }));
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const zipUrl = URL.createObjectURL(zipBlob);
+    download(zipUrl, order.zipName);
+    lastOrder = { ...order, zipUrl, sheetBlob: await dataUrlToBlob(sheet),
+      printBlobs: await Promise.all(q.sides.map(async s => [s, await dataUrlToBlob(order.prints[s])])) };
+
+    $('#orderDlg').close();
+    $('#sentStep1').textContent = T('sent.step1');
+    $('#sentStep2').innerHTML = T('sent.step2', { file: `<b>${order.zipName}</b>` });
+    $('#sentOpen').href = `https://wa.me/${SHOP.whatsapp}?text=${encodeURIComponent(orderMessage(order))}`;
+    $('#sentShare').hidden = !shareFiles(true);
+    $('#sentDlg').showModal();
+  } finally {
+    $('#orderBusy').hidden = true;
+    $('#confirmOrder').disabled = false;
+  }
+};
+$('#sentAgain').onclick = () => lastOrder && download(lastOrder.zipUrl, lastOrder.zipName);
+// On phones, the share sheet can send the images straight into a WhatsApp chat.
+function shareFiles(checkOnly) {
+  if (!lastOrder || !navigator.canShare) return false;
+  const files = [new File([lastOrder.sheetBlob], `${lastOrder.code}-order.png`, { type: 'image/png' }),
+    ...lastOrder.printBlobs.map(([s, b]) => new File([b], `${lastOrder.code}-print-${s}.png`, { type: 'image/png' }))];
+  if (!navigator.canShare({ files })) return false;
+  if (!checkOnly) navigator.share({ files, text: `${T('msg.code')}: ${lastOrder.code}` }).catch(() => {});
+  return true;
+}
+$('#sentShare').onclick = () => shareFiles(false);
+
+// ---------- Misc ----------
+let toastTimer;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function resize() {
+  const r = canvas3d.parentElement.getBoundingClientRect();
+  renderer.setSize(r.width, r.height, false);
+  camera.aspect = r.width / r.height;
+  camera.updateProjectionMatrix();
+  fitEditors();
+}
+new ResizeObserver(resize).observe(canvas3d.parentElement);
+
+renderer.setAnimationLoop(now => {
+  stepTween(now);
+  controls.update();
+  renderer.render(scene, camera);
+});
+
+// ---------- Language switch ----------
+$('#langBtn').onclick = () => i18n.toggle();
+i18n.onChange(() => {
+  // Static text is handled by i18n.apply(); re-render everything built in JS.
+  if (['TEAM 2026', 'فريقنا 2026'].includes($('#textInput').value)) $('#textInput').value = T('text.starter');
+  fillFontSelects();
+  $('#fontSel').value = starterFont();
+  $('#paintToggle').textContent = T($('#paintToggle').dataset.i18n || 'paint.start');
+  renderProducts();
+  renderLogos();
+  labelSwatches();
+  updateSummary();
+  checkBounds();
+  fitEditors();
+});
+
+// ---------- Start ----------
+(async () => {
+  fillFontSelects();
+  labelSwatches();
+  renderProducts();
+  loadLogos();
+  $('#textInput').value = T('text.starter');
+  await loadFont(starterFont());
+  setColor(state.color);
+  loadProductModel();
+  placeNew(new fabric.IText(T('text.starter'), { fontFamily: starterFont(), fill: '#ffffff', fontSize: 64, textAlign: 'center' }), 0.8);
+  ed().discardActiveObject().requestRenderAll();
+  updateSelUI();
+})();
+</script>
+</body>
+</html>

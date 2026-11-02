@@ -1,0 +1,13 @@
+{
+  "name": "mg-site",
+  "private": true,
+  "type": "module",
+  "description": "MG static site. Only needed for tools/ (exporting .glb models); the site itself needs no build.",
+  "scripts": {
+    "export-models": "node tools/export-garments.mjs"
+  },
+  "devDependencies": {
+    "@tabler/icons": "^3.19.0",
+    "three": "^0.169.0"
+  }
+}

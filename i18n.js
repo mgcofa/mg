@@ -1,0 +1,232 @@
+// MG translations (Arabic + English).
+// Static text: data-i18n (text), data-i18n-ph (placeholder), data-i18n-title (tooltip), data-i18n-alt, data-i18n-label (data-label).
+// Dynamic text: i18n.t('key', { var: value }).
+(function () {
+  const DICT = {
+    en: {
+      'title': 'MG | Design your own clothes',
+      'lang.switch': 'عربي',
+      'cat.hoodies': 'Hoodies', 'cat.sweatshirts': 'Sweatshirts', 'cat.pants': 'Pants',
+      'product.title': 'Product',
+      'product.from': 'EGP {price}',
+      'product.hoodie': 'Classic hoodie', 'product.hoodie_zip': 'Zip hoodie', 'product.hoodie_oversized': 'Oversized hoodie',
+      'product.hoodie_cropped': 'Cropped hoodie', 'product.crew': 'Classic sweatshirt', 'product.crew_oversized': 'Oversized sweatshirt',
+      'product.quarter_zip': 'Quarter-zip sweatshirt', 'product.joggers': 'Joggers', 'product.sweatpants': 'Wide-leg sweatpants',
+      'product.shorts': 'Sweat shorts',
+      'color.title': 'Color',
+      'color.custom': 'Custom color',
+      'color.black': 'Black', 'color.charcoal': 'Charcoal', 'color.white': 'White', 'color.grey': 'Heather grey', 'color.navy': 'Navy',
+      'color.royal': 'Royal blue', 'color.red': 'Red', 'color.green': 'Forest green', 'color.sand': 'Sand', 'color.pink': 'Pink',
+      'color.orange': 'Orange', 'color.purple': 'Purple',
+      'logos.title': 'Ready-made logos',
+      'logos.hint': 'Tap a logo to add it, then change its color and size.',
+      'logos.egypt': 'Egypt', 'logos.badges': 'Badges', 'logos.sports': 'Sports', 'logos.animals': 'Animals',
+      'logos.symbols': 'Symbols', 'logos.nature': 'Nature', 'logos.hobbies': 'Hobbies',
+      'paint.title': 'Draw',
+      'paint.start': '✎ Start drawing',
+      'paint.active': '✎ Drawing: draw in the design area',
+      'brush.pencil': 'Pen', 'brush.marker': 'Marker', 'brush.spray': 'Spray', 'brush.dots': 'Dots',
+      'paint.mirror': 'Mirror drawing (symmetry)',
+      'paint.smooth': 'Smooth shaky lines',
+      'paint.undo': 'Undo stroke',
+      'paint.done': 'Done',
+      'text.title': 'Add text',
+      'text.placeholder': 'Your text',
+      'text.add': 'Add text',
+      'text.starter': 'TEAM 2026',
+      'fonts.latin': 'English fonts',
+      'fonts.arabic': 'Arabic fonts',
+      'image.title': 'Your logo / image',
+      'image.upload': 'Upload PNG, JPG or SVG',
+      'image.lowRes': '⚠ This image is low resolution and may print blurry. Use 1500px+ wide, or an SVG.',
+      'shapes.title': 'Shapes',
+      'shape.star': 'Star', 'shape.heart': 'Heart', 'shape.circle': 'Circle', 'shape.badge': 'Badge',
+      'layer.title': 'Selected layer',
+      'layer.center': 'Center', 'layer.duplicate': 'Duplicate', 'layer.forward': 'Bring forward', 'layer.back': 'Send back',
+      'layer.delete': 'Delete layer',
+      'layer.tip': 'Tip: select a layer, then click anywhere on the 3D garment to move it there. Double-click text to edit it.',
+      'stage.hint': 'Drag to rotate · Scroll to zoom · Click the garment to place a layer',
+      'view.front': 'Front', 'view.back': 'Back', 'view.side': 'Side', 'view.spin': 'Auto-spin',
+      'editor.title': 'Design area',
+      'side.front': 'Front', 'side.back': 'Back',
+      'editor.printArea': 'Print area',
+      'editor.outside': '⚠ Part of your design is outside the print area and will be cut off.',
+      'order.sizes': 'Sizes & quantity',
+      'order.download': 'Download print files',
+      'order.place': 'Order on WhatsApp',
+      'order.review': 'Review your order',
+      'order.frontPreview': 'Front preview', 'order.backPreview': 'Back preview',
+      'order.name': 'Full name', 'order.phone': 'Mobile number', 'order.city': 'Governorate / city', 'order.address': 'Delivery address',
+      'order.notes': 'Notes (optional)',
+      'order.noReturn': "Custom-printed items are made to order and can't be returned unless defective. Payment is cash on delivery.",
+      'order.backToEdit': 'Back to editing',
+      'order.confirm': 'Continue',
+      'order.preparing': 'Preparing your design files…',
+      'sent.title': 'Last step: send it on WhatsApp',
+      'sent.step1': 'Tap "Open WhatsApp". Your order details are already written; just press send.',
+      'sent.step2': 'Then attach the design file {file} (just downloaded to your device) in the same chat, as a document.',
+      'sent.open': 'Open WhatsApp',
+      'sent.again': 'Download the file again',
+      'sent.share': 'Share the design images',
+      'sent.done': 'Done',
+      'msg.title': 'New order from MG website 🧥',
+      'msg.code': 'Order no.', 'msg.product': 'Product', 'msg.color': 'Color', 'msg.sizes': 'Sizes', 'msg.print': 'Print',
+      'msg.total': 'Total', 'msg.name': 'Name', 'msg.phone': 'Mobile', 'msg.city': 'City', 'msg.address': 'Address',
+      'msg.notes': 'Notes', 'msg.files': 'Design files: {file} (attached)',
+      'sheet.title': 'Order',
+      'sum.item': '{product} ({sides})',
+      'sum.perPiece': '{price} / pc',
+      'sum.pieces': 'Pieces',
+      'sum.xxl': '2XL surcharge',
+      'sum.bulk': 'Bulk discount ({rate})',
+      'sum.bulkLabel': 'Bulk discount',
+      'sum.bulkHint': '{rate} off at {n}+ pcs',
+      'sum.total': 'Total',
+      'sides.front': 'front print', 'sides.back': 'back print', 'sides.both': 'front + back print', 'sides.none': 'blank',
+      'pcs': '{n} pcs',
+      'pcs.one': '{n} pc',
+      'common.close': 'Close',
+      'toast.selectFirst': 'Select a layer first, then click the garment to place it.',
+      'toast.oneLayer': 'Move one layer at a time to the other side.',
+      'toast.modelFailed': 'Could not load the 3D model ({msg}). Showing the default.',
+      'toast.addDesign': 'Add a design first.',
+      'toast.chooseSize': 'Choose at least one size.',
+      'toast.logoFailed': 'Could not load this logo.',
+    },
+
+    ar: {
+      'title': 'MG | صمّم ملابسك بنفسك',
+      'lang.switch': 'English',
+      'cat.hoodies': 'هوديز', 'cat.sweatshirts': 'سويت شيرت', 'cat.pants': 'بناطيل',
+      'product.title': 'المنتج',
+      'product.from': '{price} ج.م',
+      'product.hoodie': 'هودي كلاسيك', 'product.hoodie_zip': 'هودي بسوستة', 'product.hoodie_oversized': 'هودي أوفر سايز',
+      'product.hoodie_cropped': 'هودي كروب (قصير)', 'product.crew': 'سويت شيرت كلاسيك', 'product.crew_oversized': 'سويت شيرت أوفر سايز',
+      'product.quarter_zip': 'سويت شيرت نص سوستة', 'product.joggers': 'بنطلون جوجر بأستك', 'product.sweatpants': 'بنطلون ترينج واسع',
+      'product.shorts': 'شورت ترينج',
+      'color.title': 'اللون',
+      'color.custom': 'لون مخصص',
+      'color.black': 'أسود', 'color.charcoal': 'فحمي', 'color.white': 'أبيض', 'color.grey': 'رمادي', 'color.navy': 'كحلي',
+      'color.royal': 'أزرق', 'color.red': 'أحمر', 'color.green': 'أخضر زيتي', 'color.sand': 'بيج', 'color.pink': 'بمبي',
+      'color.orange': 'برتقالي', 'color.purple': 'بنفسجي',
+      'logos.title': 'شعارات جاهزة',
+      'logos.hint': 'اضغط على أي شعار لإضافته، وبعدها غيّر لونه وحجمه.',
+      'logos.egypt': 'مصر', 'logos.badges': 'شارات', 'logos.sports': 'رياضة', 'logos.animals': 'حيوانات',
+      'logos.symbols': 'رموز', 'logos.nature': 'طبيعة', 'logos.hobbies': 'هوايات',
+      'paint.title': 'الرسم',
+      'paint.start': '✎ ابدأ الرسم',
+      'paint.active': '✎ وضع الرسم: ارسم في مساحة التصميم',
+      'brush.pencil': 'قلم', 'brush.marker': 'ماركر', 'brush.spray': 'بخّاخ', 'brush.dots': 'نقاط',
+      'paint.mirror': 'رسم متماثل (مرآة)',
+      'paint.smooth': 'تنعيم الخطوط المهتزة',
+      'paint.undo': 'تراجع',
+      'paint.done': 'تم',
+      'text.title': 'أضف نصًا',
+      'text.placeholder': 'اكتب النص',
+      'text.add': 'أضف النص',
+      'text.starter': 'فريقنا 2026',
+      'fonts.latin': 'خطوط إنجليزية',
+      'fonts.arabic': 'خطوط عربية',
+      'image.title': 'شعارك / صورتك',
+      'image.upload': 'ارفع صورة PNG أو JPG أو SVG',
+      'image.lowRes': '⚠ دقة الصورة منخفضة وقد تظهر الطباعة غير واضحة. استخدم صورة بعرض 1500 بكسل أو أكثر، أو ملف SVG.',
+      'shapes.title': 'أشكال',
+      'shape.star': 'نجمة', 'shape.heart': 'قلب', 'shape.circle': 'دائرة', 'shape.badge': 'شارة',
+      'layer.title': 'العنصر المحدد',
+      'layer.center': 'توسيط', 'layer.duplicate': 'تكرار', 'layer.forward': 'تقديم للأمام', 'layer.back': 'إرجاع للخلف',
+      'layer.delete': 'حذف العنصر',
+      'layer.tip': 'نصيحة: حدّد عنصرًا ثم اضغط على أي مكان في القطعة ثلاثية الأبعاد لنقله إليه. اضغط مرتين على النص لتعديله.',
+      'stage.hint': 'اسحب للتدوير · مرّر للتكبير · اضغط على القطعة لوضع العنصر',
+      'view.front': 'أمام', 'view.back': 'خلف', 'view.side': 'جانب', 'view.spin': 'دوران تلقائي',
+      'editor.title': 'مساحة التصميم',
+      'side.front': 'الأمام', 'side.back': 'الخلف',
+      'editor.printArea': 'منطقة الطباعة',
+      'editor.outside': '⚠ جزء من التصميم خارج منطقة الطباعة وسيتم قصّه.',
+      'order.sizes': 'المقاسات والكمية',
+      'order.download': 'تحميل ملفات الطباعة',
+      'order.place': 'اطلب على واتساب',
+      'order.review': 'راجع طلبك',
+      'order.frontPreview': 'معاينة الأمام', 'order.backPreview': 'معاينة الخلف',
+      'order.name': 'الاسم بالكامل', 'order.phone': 'رقم الموبايل', 'order.city': 'المحافظة / المدينة', 'order.address': 'عنوان التوصيل',
+      'order.notes': 'ملاحظات (اختياري)',
+      'order.noReturn': 'المنتجات المطبوعة حسب الطلب لا تُرد إلا في حالة وجود عيب في التصنيع. الدفع عند الاستلام.',
+      'order.backToEdit': 'الرجوع للتعديل',
+      'order.confirm': 'متابعة',
+      'order.preparing': 'جارٍ تجهيز ملفات التصميم…',
+      'sent.title': 'آخر خطوة: ابعت الطلب على واتساب',
+      'sent.step1': 'اضغط «افتح واتساب»، هتلاقي تفاصيل طلبك مكتوبة جاهزة، اضغط إرسال بس.',
+      'sent.step2': 'بعدها ابعت ملف التصميم {file} (اتحمّل على جهازك دلوقتي) في نفس المحادثة كمستند.',
+      'sent.open': 'افتح واتساب',
+      'sent.again': 'حمّل الملف تاني',
+      'sent.share': 'مشاركة صور التصميم',
+      'sent.done': 'تم',
+      'msg.title': 'طلب جديد من موقع MG 🧥',
+      'msg.code': 'رقم الطلب', 'msg.product': 'المنتج', 'msg.color': 'اللون', 'msg.sizes': 'المقاسات', 'msg.print': 'الطباعة',
+      'msg.total': 'الإجمالي', 'msg.name': 'الاسم', 'msg.phone': 'الموبايل', 'msg.city': 'المحافظة', 'msg.address': 'العنوان',
+      'msg.notes': 'ملاحظات', 'msg.files': 'ملفات التصميم: {file} (مرفقة)',
+      'sheet.title': 'طلب',
+      'sum.item': '{product} ({sides})',
+      'sum.perPiece': '{price} / للقطعة',
+      'sum.pieces': 'عدد القطع',
+      'sum.xxl': 'زيادة مقاس 2XL',
+      'sum.bulk': 'خصم الكمية ({rate})',
+      'sum.bulkLabel': 'خصم الكمية',
+      'sum.bulkHint': 'خصم {rate} عند طلب {n} قطع أو أكثر',
+      'sum.total': 'الإجمالي',
+      'sides.front': 'طباعة أمامية', 'sides.back': 'طباعة خلفية', 'sides.both': 'طباعة أمام وخلف', 'sides.none': 'بدون طباعة',
+      'pcs': '{n} قطعة',
+      'common.close': 'إغلاق',
+      'toast.selectFirst': 'حدّد عنصرًا أولًا، ثم اضغط على القطعة لوضعه.',
+      'toast.oneLayer': 'انقل عنصرًا واحدًا في كل مرة إلى الجهة الأخرى.',
+      'toast.modelFailed': 'تعذّر تحميل النموذج ثلاثي الأبعاد ({msg}). سيتم عرض النموذج الافتراضي.',
+      'toast.addDesign': 'أضف تصميمًا أولًا.',
+      'toast.chooseSize': 'اختر مقاسًا واحدًا على الأقل.',
+      'toast.logoFailed': 'تعذّر تحميل هذا الشعار.',
+    },
+  };
+
+  let lang = 'ar';   // MG targets Egypt: Arabic first
+  try { lang = localStorage.getItem('mg-lang') || 'ar'; } catch {}
+  if (!DICT[lang]) lang = 'ar';
+
+  const listeners = [];
+  const locale = () => (lang === 'ar' ? 'ar-EG' : 'en-EG');
+
+  function t(key, vars) {
+    let s = DICT[lang][key] ?? DICT.en[key] ?? key;
+    if (vars) s = s.replace(/\{(\w+)\}/g, (_, k) => (vars[k] ?? ''));
+    return s;
+  }
+  function apply(root = document) {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    root.querySelectorAll('[data-i18n]').forEach(e => { e.textContent = t(e.dataset.i18n); });
+    root.querySelectorAll('[data-i18n-ph]').forEach(e => { e.placeholder = t(e.dataset.i18nPh); });
+    root.querySelectorAll('[data-i18n-title]').forEach(e => { e.title = t(e.dataset.i18nTitle); });
+    root.querySelectorAll('[data-i18n-alt]').forEach(e => { e.alt = t(e.dataset.i18nAlt); });
+    root.querySelectorAll('[data-i18n-label]').forEach(e => { e.dataset.label = t(e.dataset.i18nLabel); });
+    document.title = t('title');
+  }
+  function setLang(next) {
+    if (!DICT[next] || next === lang) return;
+    lang = next;
+    try { localStorage.setItem('mg-lang', lang); } catch {}
+    apply();
+    listeners.forEach(fn => fn(lang));
+  }
+  const nf = () => new Intl.NumberFormat(locale());
+
+  window.i18n = {
+    t, apply, setLang,
+    get lang() { return lang; },
+    onChange: fn => listeners.push(fn),
+    toggle: () => setLang(lang === 'ar' ? 'en' : 'ar'),
+    money: n => new Intl.NumberFormat(locale(), { style: 'currency', currency: 'EGP', maximumFractionDigits: 2 }).format(Number(n || 0)),
+    num: n => nf().format(n),
+    pct: n => new Intl.NumberFormat(locale(), { style: 'percent', maximumFractionDigits: 0 }).format(n / 100),
+    date: d => new Date(d).toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' }),
+    // "·" looks like the Arabic zero (٠) next to Arabic digits, so Arabic uses a dash.
+    get sep() { return lang === 'ar' ? ' – ' : ' · '; },
+    pcs: n => t(n === 1 && DICT[lang]['pcs.one'] ? 'pcs.one' : 'pcs', { n: nf().format(n) }),
+  };
+})();
