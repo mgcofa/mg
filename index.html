@@ -8,8 +8,8 @@
 <link rel="icon" type="image/svg+xml" href="brand/mark.svg">
 <link rel="apple-touch-icon" href="brand/mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cairo:wght@400;600;700;900&family=Tajawal:wght@500;800&family=Lalezar&family=Reem+Kufi:wght@700&family=Amiri:wght@700&family=Bebas+Neue&family=Oswald:wght@600&family=Pacifico&family=Playfair+Display:wght@700&family=Permanent+Marker&display=swap" rel="stylesheet">
-<script src="i18n.js?v=8"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cairo:wght@400;600;700;900&family=Tajawal:wght@500;800&family=Lalezar&family=Reem+Kufi:wght@700&family=Amiri:wght@700&family=Bebas+Neue&family=Oswald:wght@600&family=Pacifico&family=Playfair+Display:wght@700&family=Permanent+Marker&family=Anton&family=Montserrat:wght@800&family=Bangers&family=Lobster&family=Dancing+Script:wght@700&family=Righteous&family=Russo+One&family=Black+Ops+One&family=Abril+Fatface&family=Bungee&family=Great+Vibes&family=Caveat:wght@700&family=Changa:wght@700&family=El+Messiri:wght@700&family=Aref+Ruqaa:wght@700&family=Rakkas&family=Marhey:wght@700&family=Lemonada:wght@700&family=Kufam:wght@700&family=Jomhuria&family=Mirza:wght@700&family=Vibes&display=swap" rel="stylesheet">
+<script src="i18n.js?v=9"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
 <!-- Import maps need Safari 16.4+; this polyfill makes older iPhones load the 3D modules too. -->
 <script async src="https://cdn.jsdelivr.net/npm/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
@@ -62,6 +62,15 @@
   .logo-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; max-height: 196px; overflow-y: auto; }
   .logo-grid button { aspect-ratio: 1; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); padding: 7px; cursor: pointer; }
   .logo-grid button:hover { border-color: var(--accent); }
+  .font-grid { max-height: 230px; overflow-y: auto; margin-top: 8px; }
+  .font-grid h4 { margin: 8px 0 6px; font-size: 12px; color: var(--muted); }
+  .font-grid .fonts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .font-grid button { border: 1.5px solid var(--line); border-radius: 8px; background: var(--panel); color: inherit; padding: 6px 4px 4px; cursor: pointer; font-size: 18px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .font-grid button small { display: block; font: 10px Inter, sans-serif; color: var(--muted); }
+  .font-grid button.on { border-color: var(--accent); background: var(--accent-soft); }
+  .sel-bar { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
+  .sel-bar .qc-part { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1; min-width: 0; }
+  .sel-bar .del { margin-inline-start: auto; flex: none; align-self: flex-start; background: var(--danger); border-color: var(--danger); color: #fff; font-weight: 700; }
   .logo-grid img { width: 100%; height: 100%; display: block; }
   .row { display: flex; gap: 8px; align-items: center; }
   .row + .row { margin-top: 8px; }
@@ -191,9 +200,9 @@
       <h3 data-i18n="text.title">Add text</h3>
       <div class="row"><input type="text" id="textInput" data-i18n-ph="text.placeholder" maxlength="40" dir="auto"></div>
       <div class="row">
-        <select id="fontSel"></select>
-        <input type="color" id="textColor" value="#ffffff">
+        <input type="color" id="textColor" value="#ffffff"><span class="hint" style="margin:0" data-i18n="text.color"></span>
       </div>
+      <div class="font-grid" id="fontGrid"></div>
       <div class="row"><button class="btn primary block" id="addText" data-i18n="text.add"></button></div>
     </div>
 
@@ -271,10 +280,13 @@
         <div class="ed-pane on" id="pane-front"><canvas id="ed-front"></canvas><div class="print-area" data-i18n-label="editor.printArea"></div></div>
         <div class="ed-pane" id="pane-back"><canvas id="ed-back"></canvas><div class="print-area" data-i18n-label="editor.printArea"></div></div>
       </div>
-      <div class="quick-colors" id="quickColors" hidden>
-        <span data-i18n="layer.colorTitle">Selected layer color</span>
-        <div class="qc" id="qcSwatches"></div>
-        <input type="color" id="qcCustom" data-i18n-title="color.custom">
+      <div class="quick-colors sel-bar" id="quickColors" hidden>
+        <div class="qc-part" id="qcColorPart">
+          <span data-i18n="layer.colorTitle">Selected layer color</span>
+          <div class="qc" id="qcSwatches"></div>
+          <input type="color" id="qcCustom" data-i18n-title="color.custom">
+        </div>
+        <button class="btn del" id="qcDel" data-i18n="layer.deleteShort">Delete</button>
       </div>
       <p class="out-warn" id="outWarn"></p>
     </div>
@@ -347,8 +359,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { EW, EH, STYLES, CATEGORIES, styleOf, buildGarment, printAreas, pocketOutlines } from './garment.js?v=8';
-import SHOP from './config.js?v=8';
+import { EW, EH, STYLES, CATEGORIES, styleOf, buildGarment, printAreas, pocketOutlines } from './garment.js?v=9';
+import SHOP from './config.js?v=9';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -360,8 +372,10 @@ fabric.Object.prototype.objectCaching = false;
 
 // Design fonts. Arabic ones also carry Latin glyphs, so mixed text still renders.
 const FONTS = {
-  latin: ['Bebas Neue', 'Oswald', 'Pacifico', 'Playfair Display', 'Permanent Marker', 'Inter'],
-  arabic: ['Lalezar', 'Cairo', 'Tajawal', 'Reem Kufi', 'Amiri'],
+  latin: ['Bebas Neue', 'Anton', 'Oswald', 'Montserrat', 'Bungee', 'Russo One', 'Black Ops One', 'Bangers', 'Righteous', 'Permanent Marker',
+    'Pacifico', 'Lobster', 'Dancing Script', 'Great Vibes', 'Caveat', 'Playfair Display', 'Abril Fatface', 'Inter'],
+  arabic: ['Lalezar', 'Cairo', 'Tajawal', 'Changa', 'Reem Kufi', 'Kufam', 'El Messiri', 'Lemonada', 'Marhey', 'Rakkas', 'Jomhuria',
+    'Aref Ruqaa', 'Amiri', 'Mirza', 'Vibes'],
 };
 const starterFont = () => (i18n.lang === 'ar' ? 'Lalezar' : 'Bebas Neue');
 
@@ -750,26 +764,56 @@ function placeNew(obj, widthFrac = 0.7) {
   ed().add(obj).setActiveObject(obj).requestRenderAll();
 }
 async function loadFont(f) { try { await document.fonts.load(`48px "${f}"`, 'Aa أب'); } catch {} }
+let textFont = starterFont();
 function fillFontSelects() {
-  for (const sel of [$('#fontSel'), $('#selFont')]) {
-    const keep = sel.value;
-    sel.innerHTML = '';
-    for (const group of i18n.lang === 'ar' ? ['arabic', 'latin'] : ['latin', 'arabic']) {
-      const og = document.createElement('optgroup');
-      og.label = T('fonts.' + group);
-      FONTS[group].forEach(f => og.append(new Option(f, f)));
-      sel.append(og);
+  const sel = $('#selFont'), keep = sel.value;
+  sel.innerHTML = '';
+  for (const group of i18n.lang === 'ar' ? ['arabic', 'latin'] : ['latin', 'arabic']) {
+    const og = document.createElement('optgroup');
+    og.label = T('fonts.' + group);
+    FONTS[group].forEach(f => og.append(new Option(f, f)));
+    sel.append(og);
+  }
+  sel.value = keep || starterFont();
+  renderFontGrid();
+}
+// Font picker: every font shows the customer's own words (or a sample), so they see the look before adding.
+function renderFontGrid() {
+  const typed = $('#textInput').value.trim().slice(0, 16);
+  $('#fontGrid').innerHTML = '';
+  for (const group of i18n.lang === 'ar' ? ['arabic', 'latin'] : ['latin', 'arabic']) {
+    const h = document.createElement('h4'); h.textContent = T('fonts.' + group);
+    const list = document.createElement('div'); list.className = 'fonts';
+    for (const f of FONTS[group]) {
+      const b = document.createElement('button');
+      b.dataset.font = f; b.style.fontFamily = `"${f}"`; b.title = f;
+      // Latin-only fonts can't draw Arabic letters, so they show a Latin sample instead.
+      b.textContent = group === 'latin' && hasArabic(typed) ? 'Abc 123' : typed || (group === 'arabic' ? 'صمّم لبسك' : 'Design it');
+      b.append(Object.assign(document.createElement('small'), { textContent: f }));
+      b.classList.toggle('on', f === textFont);
+      b.onclick = () => pickFont(f);
+      list.append(b);
     }
-    sel.value = keep || starterFont();
+    $('#fontGrid').append(h, list);
   }
 }
+// Picks the font for new text, and changes the selected text right away.
+async function pickFont(f) {
+  textFont = f;
+  $$('#fontGrid button').forEach(b => b.classList.toggle('on', b.dataset.font === f));
+  const o = ed().getActiveObject();
+  if (o?.type !== 'i-text') return;
+  await loadFont(f);
+  o.set('fontFamily', f); o.setCoords(); ed().requestRenderAll(); checkBounds(); updateSelUI();
+}
+$('#textInput').addEventListener('input', () => renderFontGrid());
 const hasArabic = s => /[؀-ۿ]/.test(s);
 
 $('#addText').onclick = async () => {
   const text = $('#textInput').value.trim();
   if (!text) return;
   // Latin-only fonts have no Arabic letters; switch to an Arabic font so the text doesn't fall back.
-  const font = hasArabic(text) && FONTS.latin.includes($('#fontSel').value) ? 'Lalezar' : $('#fontSel').value;
+  const font = hasArabic(text) && FONTS.latin.includes(textFont) ? 'Lalezar' : textFont;
   await loadFont(font);
   placeNew(new fabric.IText(text, { fontFamily: font, fill: $('#textColor').value, fontSize: 64, textAlign: 'center' }), 0.85);
 };
@@ -864,11 +908,13 @@ function updateSelUI() {
   const color = o && o.type !== 'image' ? layerColor(o) : null;
   $('#selColor').disabled = !color;
   if (color) $('#selColor').value = $('#qcCustom').value = color;
-  $('#quickColors').hidden = !color;
+  $('#quickColors').hidden = !o;
+  $('#qcColorPart').hidden = !color;
   $$('#qcSwatches button').forEach(b => b.classList.toggle('on', !!color && b.dataset.hex === color.toLowerCase()));
   const isText = o && o.type === 'i-text';
   $('#selFont').disabled = !isText;
   if (isText) $('#selFont').value = o.fontFamily;
+  if (isText) $$('#fontGrid button').forEach(b => b.classList.toggle('on', b.dataset.font === o.fontFamily));
 }
 function setLayerColor(c) {
   const o = ed().getActiveObject();
@@ -893,6 +939,7 @@ $('#selFont').onchange = async e => {
   if (!o) return;
   await loadFont(e.target.value);
   o.set('fontFamily', e.target.value); o.setCoords(); ed().requestRenderAll(); checkBounds();
+  textFont = e.target.value; $$('#fontGrid button').forEach(b => b.classList.toggle('on', b.dataset.font === textFont));
 };
 $('#btnCenter').onclick = () => {
   const o = ed().getActiveObject(), a = PRODUCTS[state.product].areas[state.side];
@@ -905,7 +952,19 @@ $('#btnDup').onclick = () => ed().getActiveObject().clone(c => {
 });
 $('#btnFwd').onclick = () => { ed().getActiveObject().bringForward(); ed().requestRenderAll(); };
 $('#btnBack').onclick = () => { ed().getActiveObject().sendBackwards(); ed().requestRenderAll(); };
-$('#btnDel').onclick = deleteSelected;
+$('#btnDel').onclick = $('#qcDel').onclick = deleteSelected;
+// A red × on the selected layer itself, so removing it is one tap away.
+fabric.Object.prototype.controls.del = new fabric.Control({
+  x: 0.5, y: -0.5, offsetX: 14, offsetY: -14, sizeX: 26, sizeY: 26, cursorStyle: 'pointer',
+  mouseUpHandler: () => { deleteSelected(); return true; },
+  render(ctx, left, top) {
+    ctx.save();
+    ctx.fillStyle = '#e11d48'; ctx.beginPath(); ctx.arc(left, top, 11, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.beginPath();
+    ctx.moveTo(left - 4, top - 4); ctx.lineTo(left + 4, top + 4); ctx.moveTo(left + 4, top - 4); ctx.lineTo(left - 4, top + 4); ctx.stroke();
+    ctx.restore();
+  },
+});
 function deleteSelected() {
   const c = ed(), o = c.getActiveObject();
   if (!o || o.isEditing) return;
@@ -1328,8 +1387,8 @@ $('#langBtn').onclick = () => i18n.toggle();
 i18n.onChange(() => {
   // Static text is handled by i18n.apply(); re-render everything built in JS.
   if (['TEAM 2026', 'فريقنا 2026'].includes($('#textInput').value)) $('#textInput').value = T('text.starter');
+  textFont = starterFont();
   fillFontSelects();
-  $('#fontSel').value = starterFont();
   $('#paintToggle').textContent = T($('#paintToggle').dataset.i18n || 'paint.start');
   renderProducts();
   renderLogos();
@@ -1346,6 +1405,7 @@ i18n.onChange(() => {
   renderProducts();
   loadLogos();
   $('#textInput').value = T('text.starter');
+  renderFontGrid();
   await loadFont(starterFont());
   setColor(state.color);
   loadProductModel();
