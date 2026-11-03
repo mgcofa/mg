@@ -8,7 +8,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 export const EW = 440, EH = 360;
 
 const Y1 = 1.22, SHOULDER = 0.75;            // tops: neckline and shoulder heights
-const PANTS = { top: 1.56, crotch: 0.72, halfWidth: 1.1 };
+// Proportions from real size-M sweatpants (hip ≈ 105 cm round, front rise ≈ 30 cm, inseam ≈ 77 cm), 1 unit ≈ 19.5 cm.
+const PANTS = { top: 1.56, crotch: 0.06, halfWidth: 1.6 };
 
 // ---------- Products ----------
 const TOP = {
@@ -25,9 +26,9 @@ export const STYLES = {
   crew:             { ...TOP, category: 'sweatshirts' },
   crew_oversized:   { ...TOP, category: 'sweatshirts', width: 1.12, depth: 1.08, y0: -1.5, sleeveLen: 1.86, sleeveR: 1.12, drop: 0.18 },
   quarter_zip:      { ...TOP, category: 'sweatshirts', collar: 'stand', zip: 'quarter' },
-  joggers:          { kind: 'pants', category: 'pants', leg: 'jogger', bottom: -1.95 },
-  sweatpants:       { kind: 'pants', category: 'pants', leg: 'straight', bottom: -2.02 },
-  shorts:           { kind: 'pants', category: 'pants', leg: 'shorts', bottom: 0.0 },
+  joggers:          { kind: 'pants', category: 'pants', leg: 'jogger', bottom: -3.84 },
+  sweatpants:       { kind: 'pants', category: 'pants', leg: 'straight', bottom: -3.9 },
+  shorts:           { kind: 'pants', category: 'pants', leg: 'shorts', bottom: -1.1 },
 };
 export const CATEGORIES = ['hoodies', 'sweatshirts', 'pants'];
 export const styleOf = product => STYLES[product] || STYLES.hoodie;
@@ -119,8 +120,8 @@ export function printAreas(product) {
   const st = styleOf(product);
   if (st.kind === 'pants') {
     return {
-      front: st.leg === 'shorts' ? rect(product, 'front', 0.2, 0.8, 1.1, 0.3) : rect(product, 'front', 0.22, 0.8, 1.05, 0.0),   // wearer's left thigh
-      back: rect(product, 'back', -0.8, 0.8, 1.35, 0.75),                                                                      // across the seat
+      front: st.leg === 'shorts' ? rect(product, 'front', 0.14, 0.86, 0.5, -0.45) : rect(product, 'front', 0.14, 0.86, 0.5, -0.75),   // wearer's left thigh
+      back: rect(product, 'back', -0.82, 0.82, 1.3, 0.55),                                                                            // across the seat
     };
   }
   const w = st.width;
@@ -144,7 +145,7 @@ export function pocketOutlines(product) {
     return { polys: [l, r], openings: [[l[0], l[4]], [r[1], r[2]]] };
   }
   if (st.kind === 'pants') {
-    return { polys: [], openings: [map([[-0.66, 1.37], [-0.93, 0.95]]), map([[0.66, 1.37], [0.93, 0.95]])] };
+    return { polys: [], openings: [map([[-0.6, 1.38], [-0.88, 0.9]]), map([[0.6, 1.38], [0.88, 0.9]])] };
   }
   return { polys: [], openings: [] };
 }
@@ -403,48 +404,80 @@ function buildTop(group, st, m, mesh) {
 
 // ---------- Pants ----------
 // Each leg is built as a front half and a back half (side seams), mapped flat onto the design canvas.
+// Half the front-view width of one leg: straight-ish to the knee, then tapering (joggers) or nearly straight.
 function legRadius(st, y) {
-  const { top, crotch } = PANTS;
-  if (y >= crotch) return lerp(0.46, 0.5, smooth01((y - crotch) / (top - crotch)));
-  const t = (crotch - y) / (crotch - st.bottom);
-  if (st.leg === 'jogger') return 0.46 - 0.25 * smooth01(Math.min(1, t * 1.05)) - 0.025 * smooth01((t - 0.97) / 0.03);
-  if (st.leg === 'straight') return 0.46 - 0.12 * smooth01(Math.min(1, t * 1.6));
-  return 0.46 - 0.03 * t;                                   // shorts
+  const { crotch } = PANTS;
+  if (y >= crotch) return 0.51;
+  const t = (crotch - y) / (crotch - st.bottom), KNEE = 0.45;
+  if (st.leg === 'jogger') {
+    return (t < KNEE ? lerp(0.51, 0.37, smooth01(t / KNEE)) : lerp(0.37, 0.26, smooth01((t - KNEE) / (0.97 - KNEE))))
+      - 0.02 * smooth01((t - 0.97) / 0.03);                 // tucked into the cuff
+  }
+  if (st.leg === 'straight') return t < KNEE ? lerp(0.51, 0.39, smooth01(t / KNEE)) : lerp(0.39, 0.36, (t - KNEE) / (1 - KNEE));
+  return lerp(0.51, 0.49, t);                               // shorts
 }
+// Leg centre line: the legs come in a little towards the ankles, as on a person standing.
+const legCentre = (st, y) => lerp(0.51, st.leg === 'shorts' ? 0.6 : 0.37,   // shorts legs open slightly outwards
+   Math.min(1, Math.max(0, (PANTS.crotch - y) / (PANTS.crotch - st.bottom))));
 function pantsOffset(st, psi, x, y, z) {
   const { top, crotch } = PANTS, bottom = st.bottom;
   let d = 0.012 * (noise3(x * 2.2, y * 1.6, z * 2.2) - 0.5);
   d += 0.012 * Math.sin(psi * 16) * smooth01((y - (top - 0.28)) / 0.2);          // gathered under the elastic waist
   if (st.leg !== 'shorts') {
-    const knee = lerp(crotch, bottom, 0.5);
+    const knee = lerp(crotch, bottom, 0.45);
     d += 0.013 * Math.exp(-(((y - knee) / 0.14) ** 2)) * Math.sin(psi * 3 + y * 22);  // knee creases
   }
   if (st.leg === 'jogger') {                                                         // stacked above the ankle cuff
-    const w = smooth01((y - bottom - 0.05) / 0.08) * (1 - smooth01((y - bottom - 0.55) / 0.15));
-    d += 0.026 * w * (0.5 + 0.5 * Math.sin(y * 48 + 2 * Math.sin(psi * 2)));
+    const w = smooth01((y - bottom - 0.08) / 0.1) * (1 - smooth01((y - bottom - 0.75) / 0.2));
+    d += 0.028 * w * (0.5 + 0.5 * Math.sin(y * 40 + 2 * Math.sin(psi * 2)));
   }
   if (st.leg === 'straight') d += 0.012 * Math.sin(psi * 5 + 1) * smooth01((crotch - y) / 1.0);   // drape folds
   return d;
 }
+// One quarter of the pants (left/right × front/back). Above the crotch the four quarters together form one
+// smooth hip section (an ellipse, a little deeper at the seat); below it each leg is its own slightly flattened
+// tube; in between they blend, so the front stays smooth across the centre instead of bulging per leg.
+// Columns run from the centre/inner leg (s = 0) to the outer side seam (s = 1).
 function legHalf(st, side, front) {
-  const ROWS = 150, COLS = 40, { top } = PANTS, bottom = st.bottom;
-  const pos = [], uv = [];
+  const ROWS = 160, COLS = 48, { top, crotch } = PANTS, bottom = st.bottom;
+  const pos = [], uv = [], psis = [];
   for (let r = 0; r <= ROWS; r++) {
     const y = lerp(bottom, top, r / ROWS);
-    const rx = legRadius(st, y), rz = rx * (1 + 0.22 * smooth01((y - PANTS.crotch + 0.2) / 0.5));
-    const cx = side * lerp(0.44, 0.47, smooth01((y - bottom) / (top - bottom)));
+    const t = smooth01((y - (crotch - 0.05)) / 0.5);                  // 0 = separate legs … 1 = hips
+    // Legs: centre, half-width and depth
+    const rx = legRadius(st, Math.min(y, crotch)), cx = legCentre(st, Math.min(y, crotch));
+    const rz = rx * (front ? 0.9 : 0.96);
+    // Hips: narrower at the elastic waist, widest at the hips, fuller at the seat
+    const w = smooth01((y - (top - 0.6)) / 0.6);
+    const a = lerp(1.0, 0.86, w);
+    const b = front ? lerp(0.56, 0.52, w) : lerp(0.6, 0.55, w) + 0.07 * Math.exp(-(((y - (crotch + 0.5)) / 0.3) ** 2));
     for (let c = 0; c <= COLS; c++) {
-      const psi = (front ? -Math.PI / 2 : Math.PI / 2) + Math.PI * c / COLS;
-      let x = cx + rx * Math.sin(psi);
-      if (side * x < 0.004) x = side * 0.004;                // the two legs meet at the centre seam
-      const z = rz * Math.cos(psi);
-      const n = new THREE.Vector3(Math.sin(psi) / rx, 0, Math.cos(psi) / rz).normalize();
-      const d = pantsOffset(st, psi, x, y, z);
-      pos.push(x + n.x * d, y, z + n.z * d);
-      uv.push(front ? 0.5 * (x + PANTS.halfWidth) / (2 * PANTS.halfWidth) : 0.5 + 0.5 * (PANTS.halfWidth - x) / (2 * PANTS.halfWidth), pantsV(y));
+      const s = c / COLS;
+      let x = lerp(cx - rx + 2 * rx * s, a * s, t);
+      x = Math.max(0.004, x);                                          // the legs meet at the centre seam
+      const z = lerp(rz * Math.sqrt(Math.max(0, 1 - (2 * s - 1) ** 2)), b * Math.sqrt(Math.max(0, 1 - s * s)), t);
+      const X = side * x, Z = front ? z : -z;
+      pos.push(X, y, Z);
+      psis.push(s * Math.PI);
+      uv.push(front ? 0.5 * (X + PANTS.halfWidth) / (2 * PANTS.halfWidth) : 0.5 + 0.5 * (PANTS.halfWidth - X) / (2 * PANTS.halfWidth), pantsV(y));
     }
   }
-  return gridGeometry(pos, uv, ROWS, COLS, false);
+  // Columns must run counter-clockwise seen from outside: reverse them where the quarter is mirrored.
+  const flip = (side > 0) !== front;
+  const P = [], U = [], S = [];
+  for (let r = 0; r <= ROWS; r++) for (let c = 0; c <= COLS; c++) {
+    const i = r * (COLS + 1) + (flip ? COLS - c : c);
+    P.push(pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2]); U.push(uv[i * 2], uv[i * 2 + 1]); S.push(psis[i]);
+  }
+  // Folds: built smooth first, then pushed along the surface normal.
+  const g = gridGeometry(P, U, ROWS, COLS, false);
+  const p = g.attributes.position, n = g.attributes.normal;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i), d = pantsOffset(st, S[i], x, y, z);
+    p.setXYZ(i, x + n.getX(i) * d, y + n.getY(i) * d, z + n.getZ(i) * d);
+  }
+  g.computeVertexNormals();
+  return g;
 }
 function buildPants(group, st, m, mesh) {
   const halves = [];
@@ -452,24 +485,25 @@ function buildPants(group, st, m, mesh) {
   group.add(mesh(mergeGeometries(halves), m.torso, 'Body_print'));
 
   const band = mesh(new THREE.CylinderGeometry(1, 1, 0.26, 120, 1, true), m.rib, 'Waistband_rib');
-  band.scale.set(0.99, 1, 0.625);
+  band.scale.set(0.875, 1, 0.555);
   band.position.y = PANTS.top + 0.02;
   group.add(band);
   for (const sx of [-0.05, 0.05]) {
     const curve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(sx, PANTS.top - 0.05, 0.63), new THREE.Vector3(sx * 1.3, PANTS.top - 0.28, 0.655),
-      new THREE.Vector3(sx * 1.5, PANTS.top - 0.5, 0.665),
+      new THREE.Vector3(sx, PANTS.top - 0.05, 0.56), new THREE.Vector3(sx * 1.3, PANTS.top - 0.28, 0.565),
+      new THREE.Vector3(sx * 1.5, PANTS.top - 0.5, 0.575),
     ]);
     group.add(mesh(new THREE.TubeGeometry(curve, 24, 0.016, 8), m.string, 'Drawstring_trim'));
     const tip = mesh(new THREE.CylinderGeometry(0.021, 0.021, 0.08, 12), m.tip, 'Aglet_trim');
-    tip.position.set(sx * 1.5, PANTS.top - 0.55, 0.665);
+    tip.position.set(sx * 1.5, PANTS.top - 0.55, 0.575);
     group.add(tip);
   }
   for (const side of [-1, 1]) {
-    const r = legRadius(st, st.bottom), cx = side * 0.44;
+    const r = legRadius(st, st.bottom), cx = side * legCentre(st, st.bottom);
     if (st.leg === 'jogger') {
-      const cuff = mesh(new THREE.CylinderGeometry(0.215, 0.205, 0.24, 48, 1, true), m.rib, `Cuff_${side < 0 ? 'L' : 'R'}_rib`);
-      cuff.position.set(cx, st.bottom + 0.06, 0);
+      const cuff = mesh(new THREE.CylinderGeometry(0.27, 0.26, 0.32, 48, 1, true), m.rib, `Cuff_${side < 0 ? 'L' : 'R'}_rib`);
+      cuff.scale.z = 0.95;
+      cuff.position.set(cx, st.bottom + 0.1, 0);
       group.add(cuff);
     } else {
       const hem = mesh(new THREE.TorusGeometry(1, 0.014, 8, 64), m.fabric, `Hem_${side < 0 ? 'L' : 'R'}`);

@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CMG | الهوية البصرية والإعلانات</title>
+<link rel="icon" type="image/svg+xml" href="brand/mark.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Cairo:wght@400;600;700;900&family=Lalezar&family=Bebas+Neue&display=swap" rel="stylesheet">
+<!-- Import maps need Safari 16.4+; this polyfill makes older iPhones load the 3D modules too. -->
+<script async src="https://cdn.jsdelivr.net/npm/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+<style>
+  :root { --indigo: #4f46e5; --purple: #9333ea; --ink: #18181b; --paper: #f4f4f5; --line: #e4e4e7; --muted: #71717a; --wa: #25d366; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Cairo, Inter, system-ui, sans-serif; background: var(--paper); color: var(--ink); }
+  header { display: flex; align-items: center; gap: 16px; padding: 14px 24px; background: #fff; border-bottom: 1px solid var(--line); }
+  header img { height: 40px; }
+  header a { margin-inline-start: auto; color: var(--indigo); font-weight: 700; text-decoration: none; }
+  main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 80px; }
+  h1 { font-size: 30px; margin: 8px 0 4px; }
+  h2 { font-size: 22px; margin: 44px 0 14px; }
+  .lead { color: var(--muted); margin: 0 0 8px; line-height: 1.8; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+  .grid { display: grid; gap: 14px; }
+  .logos { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+  .logo-tile { border-radius: 14px; height: 170px; display: grid; place-items: center; margin-bottom: 12px; }
+  .logo-tile img { max-width: 70%; max-height: 62%; }
+  .logo-tile.dark { background: var(--ink); } .logo-tile.light { background: var(--paper); } .logo-tile.brand { background: linear-gradient(135deg, var(--indigo), var(--purple)); }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .btn { font: inherit; font-weight: 600; font-size: 13px; border: 1px solid var(--line); background: #fff; color: var(--ink); border-radius: 9px; padding: 7px 12px; cursor: pointer; text-decoration: none; }
+  .btn.primary { background: var(--indigo); border-color: var(--indigo); color: #fff; }
+  .btn.big { padding: 11px 18px; font-size: 15px; }
+  .tile-title { font-weight: 700; margin: 0 0 2px; } .tile-sub { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
+  .colors { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+  .swatch { height: 90px; border-radius: 12px; margin-bottom: 8px; border: 1px solid rgba(0,0,0,.06); }
+  .hex { font-family: Inter, monospace; font-weight: 600; direction: ltr; text-align: start; }
+  .type { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .sample-ar { font-family: Lalezar; font-size: 46px; line-height: 1.3; }
+  .sample-en { font-family: 'Bebas Neue'; font-size: 50px; letter-spacing: 1px; direction: ltr; text-align: start; }
+  .sample-ui { font-size: 20px; }
+  ul.rules { margin: 0; padding-inline-start: 20px; line-height: 2; }
+  .taglines { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .tagline { font-family: Lalezar; font-size: 26px; }
+  .tagline.en { font-family: 'Bebas Neue'; font-size: 30px; letter-spacing: 1px; direction: ltr; text-align: start; }
+  .studio { display: grid; grid-template-columns: 330px 1fr; gap: 16px; align-items: start; }
+  .controls label { display: block; font-weight: 700; font-size: 13px; margin: 12px 0 6px; }
+  .controls select, .controls input[type=text], .controls textarea { width: 100%; font: inherit; border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; background: #fff; }
+  .controls textarea { min-height: 64px; resize: vertical; }
+  .templates { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .templates button { font: inherit; font-size: 13px; font-weight: 600; border: 1.5px solid var(--line); border-radius: 9px; background: #fff; padding: 8px 6px; cursor: pointer; }
+  .templates button.on { border-color: var(--indigo); background: #eef2ff; color: var(--indigo); }
+  .colorpick { display: flex; gap: 6px; flex-wrap: wrap; }
+  .colorpick button { width: 28px; height: 28px; border-radius: 50%; border: 2px solid #fff; outline: 1px solid rgba(0,0,0,.2); cursor: pointer; }
+  .colorpick button.on { outline: 2px solid var(--indigo); }
+  .preview { display: grid; place-items: center; background: repeating-conic-gradient(#ececf0 0 25%, #f7f7f9 0 50%) 0 0 / 22px 22px; border-radius: 16px; padding: 16px; min-height: 420px; }
+  .preview canvas { max-width: 100%; max-height: 74vh; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,.18); }
+  .busy { color: var(--muted); font-size: 13px; min-height: 20px; margin-top: 8px; }
+  @media (max-width: 860px) { .studio { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <img src="brand/logo.svg" alt="CMG">
+  <a href="./">← افتح الاستوديو</a>
+</header>
+<main>
+  <h1>الهوية البصرية لـ CMG</h1>
+  <p class="lead">كل ما تحتاجه عشان أي حاجة تطلع باسم CMG تبان من نفس العيلة: اللوجو، الألوان، الخطوط، الكلام، ومولّد إعلانات جاهز بصور المنتجات من موديلات الـ 3D.</p>
+
+  <h2>اللوجو</h2>
+  <p class="lead">حرف C حاضن كلمة MG: الشرطة اللي فوق بتوصل لآخر الـ M، واللي تحت بتشيل الكلمة كلها. سيب حوالين اللوجو مسافة فاضية قد ارتفاع حرف M على الأقل، وما تمطّهوش ولا تغيّر ألوانه.</p>
+  <div class="grid logos">
+    <div class="card"><div class="logo-tile light"><img src="brand/logo.svg" alt=""></div>
+      <p class="tile-title">اللوجو الأساسي</p><p class="tile-sub">على الخلفيات الفاتحة: الموقع، الفواتير، التيكيت.</p>
+      <div class="row"><a class="btn" href="brand/logo.svg" download="CMG-logo.svg">SVG</a><button class="btn" data-png="brand/logo.svg" data-name="CMG-logo">PNG</button></div></div>
+    <div class="card"><div class="logo-tile dark"><img src="brand/logo-white.svg" alt=""></div>
+      <p class="tile-title">نسخة بيضا</p><p class="tile-sub">على الصور والخلفيات الغامقة.</p>
+      <div class="row"><a class="btn" href="brand/logo-white.svg" download="CMG-logo-white.svg">SVG</a><button class="btn" data-png="brand/logo-white.svg" data-name="CMG-logo-white">PNG</button></div></div>
+    <div class="card"><div class="logo-tile light"><img src="brand/logo-black.svg" alt=""></div>
+      <p class="tile-title">لون واحد</p><p class="tile-sub">للطباعة بلون واحد: التطريز، الأختام، التيكيت المنسوج.</p>
+      <div class="row"><a class="btn" href="brand/logo-black.svg" download="CMG-logo-black.svg">SVG</a><button class="btn" data-png="brand/logo-black.svg" data-name="CMG-logo-black">PNG</button></div></div>
+    <div class="card"><div class="logo-tile light"><img src="brand/mark.svg" alt="" style="max-height:80%"></div>
+      <p class="tile-title">الأيقونة</p><p class="tile-sub">صورة البروفايل على انستجرام وفيسبوك وواتساب بيزنس.</p>
+      <div class="row"><a class="btn" href="brand/mark.svg" download="CMG-icon.svg">SVG</a><button class="btn" data-png="brand/mark.svg" data-name="CMG-icon" data-square>PNG</button></div></div>
+  </div>
+
+  <h2>الألوان</h2>
+  <div class="grid colors">
+    <div class="card"><div class="swatch" style="background:#4f46e5"></div><b>نيلي CMG</b><div class="hex">#4F46E5</div><div class="tile-sub">اللون الأساسي والأزرار</div></div>
+    <div class="card"><div class="swatch" style="background:#9333ea"></div><b>بنفسجي</b><div class="hex">#9333EA</div><div class="tile-sub">آخر التدرّج</div></div>
+    <div class="card"><div class="swatch" style="background:linear-gradient(135deg,#4f46e5,#9333ea)"></div><b>تدرّج CMG</b><div class="hex">#4F46E5 → #9333EA</div><div class="tile-sub">الـ C والخلفيات المميزة</div></div>
+    <div class="card"><div class="swatch" style="background:#18181b"></div><b>حبر</b><div class="hex">#18181B</div><div class="tile-sub">الكلام والخلفيات الغامقة</div></div>
+    <div class="card"><div class="swatch" style="background:#f4f4f5"></div><b>ورق</b><div class="hex">#F4F4F5</div><div class="tile-sub">الخلفيات الفاتحة</div></div>
+    <div class="card"><div class="swatch" style="background:#25d366"></div><b>أخضر واتساب</b><div class="hex">#25D366</div><div class="tile-sub">زرار «اطلب على واتساب» في الموقع بس</div></div>
+  </div>
+
+  <h2>الخطوط</h2>
+  <div class="grid type">
+    <div class="card"><div class="sample-ar">صمّم لبسك بنفسك</div><p class="tile-sub">Lalezar: العناوين العربي في الإعلانات</p></div>
+    <div class="card"><div class="sample-en">DESIGN IT. WEAR IT.</div><p class="tile-sub">Bebas Neue: العناوين الإنجليزي</p></div>
+    <div class="card"><div class="sample-ui">اختار اللون، حط اسمك أو لوجو فريقك، واطلب على واتساب.</div><p class="tile-sub">Cairo: باقي الكلام في الموقع والإعلانات</p></div>
+  </div>
+
+  <h2>طريقة الكلام</h2>
+  <div class="grid taglines">
+    <div class="card"><div class="tagline">صمّم لبسك بنفسك</div><p class="tile-sub">الجملة الأساسية</p></div>
+    <div class="card"><div class="tagline">لبسك… بتصميمك</div><p class="tile-sub">قصيرة للبوستات</p></div>
+    <div class="card"><div class="tagline">فريقك يستاهل هودي على مقاسه</div><p class="tile-sub">للفرق والشركات</p></div>
+    <div class="card"><div class="tagline en">DESIGN IT. WEAR IT.</div><p class="tile-sub">بالإنجليزي</p></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <ul class="rules">
+      <li>اتكلم مصري بسيط وودود، زي ما بتكلم صاحبك: «صمّم»، «اختار»، «اطلب».</li>
+      <li>كل إعلان فيه حاجة واحدة واضحة يعملها الشخص: «صمّم دلوقتي على الموقع»، ومعاه لينك الموقع.</li>
+      <li>وريه المنتج: صورة الـ 3D بتبيع أكتر من أي كلام.</li>
+      <li>من غير أسعار في الإعلانات: السعر بيبان على الموقع وهو بيصمّم.</li>
+    </ul>
+  </div>
+
+  <h2>مولّد الإعلانات</h2>
+  <p class="lead">اختار القالب والمنتج واللون، وعدّل الكلام لو حابب، وبعدين نزّل الصورة جاهزة للنشر.</p>
+  <div class="studio">
+    <div class="card controls">
+      <label>القالب</label>
+      <div class="templates" id="templates"></div>
+      <label for="product">المنتج</label>
+      <select id="product"></select>
+      <label>لون القطعة</label>
+      <div class="colorpick" id="colors"></div>
+      <label for="lang">لغة الإعلان</label>
+      <select id="lang"><option value="ar">عربي</option><option value="en">English</option></select>
+      <label for="headline">العنوان</label>
+      <textarea id="headline"></textarea>
+      <label for="sub">الكلام الصغير</label>
+      <textarea id="sub"></textarea>
+      <label for="cta">الزرار</label>
+      <input type="text" id="cta">
+      <div class="row" style="margin-top:16px"><button class="btn primary big" id="download">تحميل الصورة PNG</button></div>
+      <p class="busy" id="busy"></p>
+    </div>
+    <div class="preview"><canvas id="ad"></canvas></div>
+  </div>
+</main>
+
+<script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { STYLES, buildGarment, printAreas, EW, EH } from './garment.js';
+
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const SITE = 'mgcofa.github.io/mg';
+const BRAND = { indigo: '#4f46e5', purple: '#9333ea', ink: '#18181b', paper: '#f4f4f5', wa: '#25d366' };
+
+// ---------- Logo downloads as PNG ----------
+const loadImage = src => new Promise((ok, fail) => { const i = new Image(); i.onload = () => ok(i); i.onerror = fail; i.src = src; });
+$$('[data-png]').forEach(b => b.onclick = async () => {
+  const img = await loadImage(b.dataset.png);
+  const w = 2048, h = b.dataset.square !== undefined ? 2048 : Math.round(2048 * img.height / img.width);
+  const c = Object.assign(document.createElement('canvas'), { width: w, height: h });
+  c.getContext('2d').drawImage(img, 0, 0, w, h);
+  c.toBlob(blob => download(URL.createObjectURL(blob), b.dataset.name + '.png'));
+});
+function download(href, name) { const a = Object.assign(document.createElement('a'), { href, download: name }); document.body.append(a); a.click(); a.remove(); }
+
+// ---------- 3D product renders (same models and fabric as the studio) ----------
+const R = 1200;
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(R, R, false);
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene();
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.55;
+const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
+const key = new THREE.DirectionalLight(0xffffff, 2.1);
+key.position.set(2.5, 5, 5); key.castShadow = true; key.shadow.mapSize.set(2048, 2048);
+Object.assign(key.shadow.camera, { left: -3, right: 3, top: 3, bottom: -3, near: 1, far: 16 });
+key.shadow.bias = -0.0004; key.shadow.normalBias = 0.035;
+scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff, 0.55); fill.position.set(-5, 1.5, 3); scene.add(fill);
+const rim = new THREE.DirectionalLight(0xffffff, 0.9); rim.position.set(-3, 4, -6); scene.add(rim);
+
+function knitTexture(ribbed) {
+  const c = Object.assign(document.createElement('canvas'), { width: 128, height: 128 }), g = c.getContext('2d');
+  g.fillStyle = '#808080'; g.fillRect(0, 0, 128, 128);
+  for (let x = 0; x < 128; x += 4) { g.fillStyle = ribbed ? (x % 8 ? '#5a5a5a' : '#a8a8a8') : (x % 8 ? '#787878' : '#8a8a8a'); g.fillRect(x, 0, ribbed ? 4 : 2, 128); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+}
+const knit = knitTexture(false); knit.repeat.set(40, 20);
+const rib = knitTexture(true); rib.repeat.set(30, 1);
+const texCanvas = Object.assign(document.createElement('canvas'), { width: 2048, height: 1024 });
+const designTex = new THREE.CanvasTexture(texCanvas); designTex.colorSpace = THREE.SRGBColorSpace; designTex.anisotropy = 8;
+const fabricProps = { bumpMap: knit, bumpScale: 0.6, roughness: 0.92, sheen: 1, sheenRoughness: 0.6, side: THREE.DoubleSide };
+const mats = {
+  torso: new THREE.MeshPhysicalMaterial({ ...fabricProps, map: designTex }),
+  fabric: new THREE.MeshPhysicalMaterial({ ...fabricProps }),
+  rib: new THREE.MeshPhysicalMaterial({ ...fabricProps, bumpMap: rib, bumpScale: 1.4, roughness: 0.95 }),
+  lining: new THREE.MeshPhysicalMaterial({ ...fabricProps, side: THREE.BackSide }),
+  string: new THREE.MeshStandardMaterial({ color: 0xf4f4f0, roughness: 0.8 }),
+  tip: new THREE.MeshStandardMaterial({ color: 0xc9ccd1, metalness: 0.8, roughness: 0.3 }),
+};
+const garments = {};
+
+// Renders one garment in the given color with the CMG logo printed on the chest; returns a canvas.
+async function renderGarment(product, color, azimuth = 0.42) {
+  const logo = await loadImage(isLight(color) ? 'brand/logo-black.svg' : 'brand/logo-white.svg');
+  const g = texCanvas.getContext('2d');
+  g.fillStyle = color; g.fillRect(0, 0, 2048, 1024);
+  const a = printAreas(product).front, sx = 1024 / EW, sy = 1024 / EH;
+  const w = a.w * sx * 0.62, h = w * logo.height / logo.width;
+  g.drawImage(logo, a.x * sx + (a.w * sx - w) / 2, a.y * sy + Math.min(a.h * sy * 0.18, a.h * sy - h), w, h);
+  designTex.needsUpdate = true;
+
+  const sheen = new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.35);
+  mats.fabric.color.set(color); mats.rib.color.set(color).multiplyScalar(0.88); mats.lining.color.set(color).multiplyScalar(0.62);
+  for (const m of [mats.torso, mats.fabric, mats.rib, mats.lining]) m.sheenColor.copy(sheen);
+  mats.string.color.set(isLight(color) ? '#1a1a1a' : '#f4f4f0');
+
+  for (const k of Object.keys(garments)) garments[k].group.visible = false;
+  if (!garments[product]) { garments[product] = buildGarment(product, mats); scene.add(garments[product].group); }
+  const gm = garments[product];
+  gm.group.visible = true;
+  const size = new THREE.Box3().setFromObject(gm.group).getSize(new THREE.Vector3());
+  const tan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const dist = Math.max(size.y / 2 / tan, size.x / 2 / tan) * 1.12;
+  camera.position.set(Math.sin(azimuth) * dist, 0.15, Math.cos(azimuth) * dist);
+  camera.lookAt(0, -0.05, 0);
+  renderer.render(scene, camera);
+  const out = Object.assign(document.createElement('canvas'), { width: R, height: R });
+  out.getContext('2d').drawImage(renderer.domElement, 0, 0);
+  return out;
+}
+function isLight(hex) { const n = parseInt(hex.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 150; }
+
+// ---------- Ad templates ----------
+const NAMES = {
+  hoodie: ['هودي كلاسيك', 'Classic hoodie'], hoodie_plain: ['هودي بدون جيب', 'Hoodie, no pocket'], hoodie_pockets: ['هودي بجيب مفتوح', 'Open-pocket hoodie'],
+  hoodie_zip: ['هودي بسوستة', 'Zip hoodie'], hoodie_oversized: ['هودي أوفر سايز', 'Oversized hoodie'], hoodie_cropped: ['هودي كروب', 'Cropped hoodie'],
+  crew: ['سويت شيرت', 'Sweatshirt'], crew_oversized: ['سويت شيرت أوفر سايز', 'Oversized sweatshirt'], quarter_zip: ['سويت شيرت نص سوستة', 'Quarter-zip'],
+  joggers: ['بنطلون جوجر', 'Joggers'], sweatpants: ['بنطلون ترينج', 'Sweatpants'], shorts: ['شورت ترينج', 'Sweat shorts'],
+};
+const COLORS = ['#1f2a44', '#111318', '#f2f2ef', '#9ea3a8', '#a3202a', '#1f5a3a', '#d8c8a4', '#2b59c3', '#e57b2d', '#5b3a8c'];
+
+const TEMPLATES = {
+  post:  { label: 'بوست مربع', size: [1080, 1080] },
+  story: { label: 'ستوري', size: [1080, 1920] },
+  offer: { label: 'عرض الكميات', size: [1080, 1080] },
+  cover: { label: 'غلاف فيسبوك', size: [1640, 624] },
+};
+const COPY = {
+  post:  { ar: ['صمّم الهودي بتاعك\nبنفسك', 'اختار اللون، حط اسمك أو لوجو فريقك،\nوشوفه 3D قبل ما تطلب.', 'صمّم دلوقتي على الموقع'],
+           en: ['DESIGN YOUR\nOWN HOODIE', 'Pick the color, add your name or team logo,\nsee it in 3D before you order.', 'Design yours now'] },
+  story: { ar: ['لبسك…\nبتصميمك', 'صمّم ← اطلب على واتساب ← استلم', 'ابدأ التصميم'],
+           en: ['DESIGN IT.\nWEAR IT.', 'Design → Order on WhatsApp → Receive', 'Start designing'] },
+  offer: { ar: ['خصم ١٠٪', 'للفرق والشركات والمدارس\nمن ١٠ قطع أو أكتر', 'صمّم طلبك على الموقع'],
+           en: ['10% OFF', 'For teams, companies and schools\n10 pieces or more', 'Design your order'] },
+  cover: { ar: ['صمّم لبسك بنفسك', 'هودي • سويت شيرت • ترينج — بطباعتك', 'صمّم دلوقتي على الموقع'],
+           en: ['DESIGN IT. WEAR IT.', 'Hoodies • Sweatshirts • Sweatpants — your print', 'Design yours now'] },
+};
+
+const state = { template: 'post', product: 'hoodie', color: '#1f2a44', lang: 'ar' };
+
+for (const [k, t] of Object.entries(TEMPLATES)) {
+  const b = Object.assign(document.createElement('button'), { textContent: t.label });
+  b.dataset.t = k;
+  b.onclick = () => { state.template = k; fillCopy(); renderAd(); };
+  $('#templates').append(b);
+}
+for (const p of Object.keys(STYLES)) $('#product').append(new Option(NAMES[p]?.[0] || p, p));
+$('#product').onchange = e => { state.product = e.target.value; renderAd(); };
+for (const c of COLORS) {
+  const b = document.createElement('button');
+  b.style.background = c; b.dataset.c = c;
+  b.onclick = () => { state.color = c; renderAd(); };
+  $('#colors').append(b);
+}
+$('#lang').onchange = e => { state.lang = e.target.value; fillCopy(); renderAd(); };
+for (const id of ['headline', 'sub', 'cta']) $('#' + id).oninput = () => renderAd();
+function fillCopy() {
+  const [h, s, c] = COPY[state.template][state.lang];
+  $('#headline').value = h; $('#sub').value = s; $('#cta').value = c;
+}
+
+// ---------- Drawing helpers ----------
+const ctxOf = c => c.getContext('2d');
+function text(g, str, x, y, { font, size, color = BRAND.ink, align = 'right', lh = 1.15, rtl = true, weight = '' }) {
+  g.save();
+  g.font = `${weight} ${size}px ${font}`; g.fillStyle = color; g.textAlign = align; g.direction = rtl ? 'rtl' : 'ltr';
+  String(str).split('\n').forEach((line, i) => g.fillText(line, x, y + i * size * lh));
+  g.restore();
+}
+function pill(g, str, cx, cy, { size, rtl, bg = BRAND.indigo, color = '#fff', font }) {
+  g.save();
+  g.font = `700 ${size}px ${font}`;
+  const w = g.measureText(str).width + size * 2.2, h = size * 2.1;
+  g.fillStyle = bg; g.beginPath(); g.roundRect(cx - w / 2, cy - h / 2, w, h, h / 2); g.fill();
+  g.fillStyle = color; g.textAlign = 'center'; g.textBaseline = 'middle'; g.direction = rtl ? 'rtl' : 'ltr';
+  g.fillText(str, cx, cy + size * 0.06);
+  g.restore();
+  return w;
+}
+function brandGradient(g, x0, y0, x1, y1) {
+  const gr = g.createLinearGradient(x0, y0, x1, y1); gr.addColorStop(0, BRAND.indigo); gr.addColorStop(1, BRAND.purple); return gr;
+}
+function badge3d(g, cx, cy, r, rtl) {
+  g.save();
+  g.fillStyle = brandGradient(g, cx - r, cy - r, cx + r, cy + r);
+  g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#fff'; g.textAlign = 'center'; g.direction = rtl ? 'rtl' : 'ltr';
+  g.font = `${r * 0.78}px 'Bebas Neue'`; g.fillText('3D', cx, cy + r * 0.2);
+  g.font = `700 ${r * 0.2}px ${rtl ? 'Cairo' : 'Inter'}`; g.fillText(rtl ? 'شوفه قبل ما تطلب' : 'SEE IT FIRST', cx, cy + r * 0.56);
+  g.restore();
+}
+
+// ---------- Render ----------
+let renderToken = 0;
+async function renderAd() {
+  const token = ++renderToken;
+  $$('#templates button').forEach(b => b.classList.toggle('on', b.dataset.t === state.template));
+  $$('#colors button').forEach(b => b.classList.toggle('on', b.dataset.c === state.color));
+  $('#product').value = state.product;
+  $('#busy').textContent = 'جارٍ تجهيز الصورة…';
+  await Promise.all(['Lalezar', 'Cairo', 'Bebas Neue', 'Inter'].map(f => document.fonts.load(`48px "${f}"`, 'Aa أب')));
+  const [W, H] = TEMPLATES[state.template].size;
+  const c = $('#ad'); c.width = W; c.height = H;
+  const g = ctxOf(c), rtl = state.lang === 'ar';
+  const head = $('#headline').value, sub = $('#sub').value, cta = $('#cta').value;
+  const HF = rtl ? 'Lalezar' : "'Bebas Neue'", BF = rtl ? 'Cairo' : 'Inter';
+  const X = rtl ? W - 70 : 70, align = rtl ? 'right' : 'left';
+  const logoDark = await loadImage('brand/logo.svg'), logoWhite = await loadImage('brand/logo-white.svg');
+
+  if (state.template === 'post') {
+    const bg = g.createRadialGradient(W * 0.35, H * 0.6, 50, W * 0.35, H * 0.6, W * 0.9);
+    bg.addColorStop(0, '#ffffff'); bg.addColorStop(1, '#e6e6ee'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
+    g.fillStyle = brandGradient(g, 0, H - 24, W, H); g.fillRect(0, H - 24, W, 24);
+    const shot = await renderGarment(state.product, state.color, rtl ? 0.42 : -0.42);
+    if (token !== renderToken) return;
+    g.drawImage(shot, rtl ? -120 : W - 700, 190, 820, 820);   // product on one half, words on the other
+    g.drawImage(logoDark, rtl ? W - 70 - 230 : 70, 60, 230, 230 * logoDark.height / logoDark.width);
+    text(g, head, X, 300, { font: HF, size: rtl ? 78 : 96, align, rtl });
+    text(g, sub, X, 520, { font: BF, size: 28, color: '#3f3f46', align, rtl, lh: 1.55, weight: 600 });
+    badge3d(g, rtl ? W - 190 : 190, 790, 105, rtl);
+    const w = pill(g, cta, 0, -100, { size: 34, rtl, font: BF });
+    pill(g, cta, rtl ? W - 70 - w / 2 : 70 + w / 2, H - 125, { size: 34, rtl, font: BF });
+    text(g, SITE, rtl ? W - 70 : 70, H - 50, { font: 'Inter', size: 24, color: '#71717a', align, rtl: false, weight: 600 });
+  }
+
+  if (state.template === 'story') {
+    g.fillStyle = brandGradient(g, 0, 0, W, H); g.fillRect(0, 0, W, H);
+    const glow = g.createRadialGradient(W / 2, H * 0.55, 50, W / 2, H * 0.55, W * 0.8);
+    glow.addColorStop(0, 'rgba(255,255,255,0.35)'); glow.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = glow; g.fillRect(0, 0, W, H);
+    g.drawImage(logoWhite, W / 2 - 170, 110, 340, 340 * logoWhite.height / logoWhite.width);
+    text(g, head, W / 2, 470, { font: HF, size: rtl ? 130 : 150, color: '#fff', align: 'center', rtl });
+    const shot = await renderGarment(state.product, state.color, 0.35);
+    if (token !== renderToken) return;
+    g.drawImage(shot, 90, 660, 900, 900);
+    text(g, sub, W / 2, 1670, { font: BF, size: 38, color: '#fff', align: 'center', rtl, weight: 700 });
+    pill(g, cta, W / 2, 1790, { size: 42, rtl, bg: '#fff', color: BRAND.indigo, font: BF });
+    text(g, SITE, W / 2, 1880, { font: 'Inter', size: 30, color: 'rgba(255,255,255,0.9)', align: 'center', rtl: false, weight: 600 });
+  }
+
+  if (state.template === 'offer') {
+    g.fillStyle = BRAND.ink; g.fillRect(0, 0, W, H);
+    const colors = [state.color, '#f2f2ef', '#a3202a'].filter((c, i, a) => a.indexOf(c) === i).concat(['#2b59c3']).slice(0, 3);
+    const shots = [];
+    for (const [i, col] of colors.entries()) { shots.push(await renderGarment(state.product, col, [-0.5, 0.0, 0.5][i])); if (token !== renderToken) return; }
+    // Headline and details on top, three colorways below, call to action on a dark fade at the bottom.
+    g.drawImage(logoWhite, W / 2 - 100, 40, 200, 200 * logoWhite.height / logoWhite.width);
+    g.save(); g.font = `${rtl ? 140 : 180}px ${HF}`; g.textAlign = 'center'; g.direction = rtl ? 'rtl' : 'ltr';
+    g.fillStyle = brandGradient(g, W / 2 - 300, 0, W / 2 + 300, 0); g.fillText(head, W / 2, 290); g.restore();
+    text(g, sub, W / 2, 360, { font: BF, size: 34, color: '#fff', align: 'center', rtl, lh: 1.45, weight: 700 });
+    g.drawImage(shots[0], -70, 500, 560, 560);
+    g.drawImage(shots[2], W - 490, 500, 560, 560);
+    g.drawImage(shots[1], W / 2 - 320, 450, 640, 640);
+    const fade = g.createLinearGradient(0, H - 200, 0, H);
+    fade.addColorStop(0, 'rgba(24,24,27,0)'); fade.addColorStop(1, 'rgba(24,24,27,0.95)');
+    g.fillStyle = fade; g.fillRect(0, H - 200, W, 200);
+    pill(g, cta, W / 2, H - 95, { size: 32, rtl, font: BF });
+    text(g, SITE, W / 2, H - 25, { font: 'Inter', size: 24, color: 'rgba(255,255,255,0.75)', align: 'center', rtl: false, weight: 600 });
+  }
+
+  if (state.template === 'cover') {
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
+    g.fillStyle = brandGradient(g, 0, 0, W, 0); g.fillRect(0, H - 16, W, 16);
+    const items = [[state.product, state.color], ['crew', '#f2f2ef'], ['joggers', '#111318']];
+    const shots = [];
+    for (const [i, [p, col]] of items.entries()) { shots.push(await renderGarment(p, col, [0.4, 0, -0.4][i])); if (token !== renderToken) return; }
+    // Facebook puts the page's profile picture over the bottom-left corner: keep it empty.
+    const zone = rtl ? 200 : W - 900;
+    shots.forEach((s, i) => g.drawImage(s, zone + i * 190, 50, 520, 520));
+    const tx = rtl ? W - 80 : 260, ta = rtl ? 'right' : 'left';
+    g.drawImage(logoDark, rtl ? W - 80 - 250 : 260, 60, 250, 250 * logoDark.height / logoDark.width);
+    text(g, head, tx, 290, { font: HF, size: rtl ? 78 : 84, align: ta, rtl });
+    text(g, sub, tx, 365, { font: BF, size: 26, color: '#3f3f46', align: ta, rtl, weight: 600 });
+    const w = pill(g, cta, 0, -100, { size: 26, rtl, font: BF });
+    pill(g, cta, rtl ? W - 80 - w / 2 : 260 + w / 2, 450, { size: 26, rtl, font: BF });
+    text(g, SITE, tx, 535, { font: 'Inter', size: 24, color: '#71717a', align: ta, rtl: false, weight: 600 });
+  }
+
+  $('#busy').textContent = '';
+}
+
+$('#download').onclick = () => {
+  $('#ad').toBlob(blob => download(URL.createObjectURL(blob), `CMG-${state.template}-${state.product}-${state.lang}.png`), 'image/png');
+};
+
+fillCopy();
+renderAd();
+</script>
+</body>
+</html>
