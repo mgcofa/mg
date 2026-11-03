@@ -1,0 +1,145 @@
+[
+ {
+  "cat": "egypt",
+  "items": [
+   "egypt-pyramids",
+   "egypt-ankh",
+   "egypt-lotus",
+   "egypt-palm",
+   "egypt-eye",
+   "egypt-misr",
+   "egypt-egypt",
+   "egypt-cairo",
+   "egypt-alqahera"
+  ]
+ },
+ {
+  "cat": "badges",
+  "items": [
+   "badges-team",
+   "badges-number10",
+   "badges-est",
+   "badges-mg",
+   "badges-stars",
+   "badges-wings"
+  ]
+ },
+ {
+  "cat": "sports",
+  "items": [
+   "ball-football",
+   "ball-basketball",
+   "ball-tennis",
+   "ball-volleyball",
+   "ball-american-football",
+   "ball-baseball",
+   "trophy",
+   "medal",
+   "award",
+   "run",
+   "bike",
+   "barbell",
+   "swimming",
+   "karate",
+   "ping-pong",
+   "target-arrow",
+   "stretching",
+   "yoga"
+  ]
+ },
+ {
+  "cat": "animals",
+  "items": [
+   "paw",
+   "cat",
+   "dog",
+   "fish",
+   "butterfly",
+   "bug",
+   "spider",
+   "feather",
+   "deer",
+   "horse",
+   "pig",
+   "bat",
+   "ghost",
+   "mushroom",
+   "cherry"
+  ]
+ },
+ {
+  "cat": "symbols",
+  "items": [
+   "crown",
+   "star",
+   "heart",
+   "bolt",
+   "flame",
+   "skull",
+   "diamond",
+   "sparkles",
+   "infinity",
+   "peace",
+   "yin-yang",
+   "anchor",
+   "shield",
+   "rocket",
+   "clover",
+   "mood-smile",
+   "eye",
+   "key",
+   "bomb",
+   "spiral",
+   "circle-dotted",
+   "hexagon"
+  ]
+ },
+ {
+  "cat": "nature",
+  "items": [
+   "leaf",
+   "tree",
+   "trees",
+   "plant",
+   "flower",
+   "mountain",
+   "ripple",
+   "cloud",
+   "snowflake",
+   "droplet",
+   "sun",
+   "moon",
+   "moon-stars",
+   "planet",
+   "cactus",
+   "seeding",
+   "rainbow",
+   "tornado"
+  ]
+ },
+ {
+  "cat": "hobbies",
+  "items": [
+   "music",
+   "headphones",
+   "microphone",
+   "guitar-pick",
+   "vinyl",
+   "camera",
+   "device-gamepad-2",
+   "code",
+   "palette",
+   "brush",
+   "book",
+   "coffee",
+   "pizza",
+   "ice-cream",
+   "car",
+   "plane",
+   "motorbike",
+   "skateboarding",
+   "tent",
+   "chess-knight"
+  ]
+ }
+]
