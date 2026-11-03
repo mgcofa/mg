@@ -17,6 +17,7 @@ const TOP = {
 };
 export const STYLES = {
   hoodie:           { ...TOP, category: 'hoodies', hood: true, collar: null, pocket: 'kangaroo' },
+  hoodie_plain:     { ...TOP, category: 'hoodies', hood: true, collar: null },   // no pocket
   hoodie_zip:       { ...TOP, category: 'hoodies', hood: true, collar: null, pocket: 'split', zip: 'full' },
   hoodie_oversized: { ...TOP, category: 'hoodies', hood: true, collar: null, pocket: 'kangaroo', width: 1.12, depth: 1.08, y0: -1.5, sleeveLen: 1.86, sleeveR: 1.12, drop: 0.18 },
   hoodie_cropped:   { ...TOP, category: 'hoodies', hood: true, collar: null, width: 0.96, depth: 0.97, y0: -0.6 },
@@ -237,7 +238,7 @@ function sleeveGeometry(side, st) {
 // inside (lining), and the opening's edge points (for the rolled hem).
 function hoodGeometry(st) {
   const ROWS = 72, COLS = 88, pos = [], inner = [], left = [], right = [];
-  const TH_TOP = 0.03 * Math.PI, TH_BOTTOM = 0.86 * Math.PI, CY = 1.78, RY = 0.66;
+  const TH_TOP = 0, TH_BOTTOM = 0.86 * Math.PI, CY = 1.78, RY = 0.66;   // starts at the very top: no hole in the crown
   for (let i = 0; i <= ROWS; i++) {
     const t = 1 - i / ROWS;                                       // 0 = crown … 1 = neckline (rows go up)
     const th = lerp(TH_TOP, TH_BOTTOM, t);

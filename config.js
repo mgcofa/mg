@@ -5,7 +5,7 @@ export default {
 
   // Price per piece in Egyptian pounds, for the blank garment.
   prices: {
-    hoodie: 650, hoodie_zip: 750, hoodie_oversized: 750, hoodie_cropped: 600,
+    hoodie: 650, hoodie_plain: 620, hoodie_zip: 750, hoodie_oversized: 750, hoodie_cropped: 600,
     crew: 500, crew_oversized: 600, quarter_zip: 650,
     joggers: 550, sweatpants: 550, shorts: 400,
   },
@@ -15,7 +15,7 @@ export default {
 
   // Optional 3D model files per product (see MODEL_BRIEF.md). Products not listed use the built-in model.
   models: {
-    hoodie: 'models/hoodie.glb', hoodie_zip: 'models/hoodie_zip.glb', hoodie_oversized: 'models/hoodie_oversized.glb',
+    hoodie: 'models/hoodie.glb', hoodie_plain: 'models/hoodie_plain.glb', hoodie_zip: 'models/hoodie_zip.glb', hoodie_oversized: 'models/hoodie_oversized.glb',
     hoodie_cropped: 'models/hoodie_cropped.glb', crew: 'models/crew.glb', crew_oversized: 'models/crew_oversized.glb',
     quarter_zip: 'models/quarter_zip.glb', joggers: 'models/joggers.glb', sweatpants: 'models/sweatpants.glb',
     shorts: 'models/shorts.glb',
