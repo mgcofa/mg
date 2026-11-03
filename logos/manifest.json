@@ -1,5 +1,32 @@
 [
  {
+  "cat": "cmg",
+  "items": [
+   "cmg-logo",
+   "cmg-mark",
+   "cmg-circle",
+   "cmg-tagline",
+   "cmg-badge"
+  ]
+ },
+ {
+  "cat": "words",
+  "items": [
+   "words-habibi",
+   "words-ostora",
+   "words-yalla",
+   "words-masry",
+   "words-dof3a",
+   "words-classof",
+   "words-squad",
+   "words-family",
+   "words-boss",
+   "words-king",
+   "words-queen",
+   "words-original"
+  ]
+ },
+ {
   "cat": "egypt",
   "items": [
    "egypt-pyramids",
@@ -140,6 +167,71 @@
    "skateboarding",
    "tent",
    "chess-knight"
+  ]
+ },
+ {
+  "cat": "school",
+  "items": [
+   "school",
+   "certificate",
+   "books",
+   "pencil",
+   "backpack",
+   "atom",
+   "flask",
+   "microscope",
+   "bulb",
+   "math-function",
+   "ruler-2"
+  ]
+ },
+ {
+  "cat": "fun",
+  "items": [
+   "mood-wink",
+   "mood-heart",
+   "mood-crazy-happy",
+   "hand-love-you",
+   "thumb-up",
+   "confetti",
+   "gift",
+   "balloon",
+   "cake",
+   "alien",
+   "ufo",
+   "robot",
+   "pacman",
+   "ghost-2",
+   "stars"
+  ]
+ },
+ {
+  "cat": "travel",
+  "items": [
+   "globe",
+   "compass",
+   "map-pin",
+   "flag",
+   "sailboat",
+   "helicopter",
+   "beach",
+   "umbrella",
+   "campfire",
+   "car-suv",
+   "sunset",
+   "building-castle"
+  ]
+ },
+ {
+  "cat": "power",
+  "items": [
+   "swords",
+   "sword",
+   "axe",
+   "shield-star",
+   "helmet",
+   "bow",
+   "gauge"
   ]
  }
 ]
