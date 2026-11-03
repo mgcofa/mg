@@ -446,7 +446,7 @@ function drawSeams() {
 }
 // Pocket panels and openings (front side), from canvas px to texture px.
 function drawPockets() {
-  const { polys, openings } = pocketOutlines(state.product);
+  const { polys, openings, open } = pocketOutlines(state.product);
   const tx = ([x, y]) => [x * 1024 / EW, y * 1024 / EH];
   tctx.save();
   for (const poly of polys) {
@@ -456,7 +456,8 @@ function drawPockets() {
     tctx.fillStyle = 'rgba(0,0,0,0.05)'; tctx.fill();
     tctx.setLineDash([7, 6]); tctx.lineWidth = 2.5; tctx.strokeStyle = stitchColor(); tctx.stroke();
   }
-  tctx.setLineDash([]); tctx.lineWidth = 7; tctx.strokeStyle = 'rgba(0,0,0,0.22)';
+  // Shadow inside the hand openings; deeper when the pocket really opens (seen through the gap).
+  tctx.setLineDash([]); tctx.lineWidth = open ? 22 : 7; tctx.strokeStyle = open ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.22)';
   for (const [p, q] of openings) { tctx.beginPath(); tctx.moveTo(...tx(p)); tctx.lineTo(...tx(q)); tctx.stroke(); }
   tctx.restore();
 }

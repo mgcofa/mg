@@ -18,6 +18,7 @@ const TOP = {
 export const STYLES = {
   hoodie:           { ...TOP, category: 'hoodies', hood: true, collar: null, pocket: 'kangaroo' },
   hoodie_plain:     { ...TOP, category: 'hoodies', hood: true, collar: null },   // no pocket
+  hoodie_pockets:   { ...TOP, category: 'hoodies', hood: true, collar: null, pocket: 'kangaroo', openPocket: true },   // real open pocket
   hoodie_zip:       { ...TOP, category: 'hoodies', hood: true, collar: null, pocket: 'split', zip: 'full' },
   hoodie_oversized: { ...TOP, category: 'hoodies', hood: true, collar: null, pocket: 'kangaroo', width: 1.12, depth: 1.08, y0: -1.5, sleeveLen: 1.86, sleeveR: 1.12, drop: 0.18 },
   hoodie_cropped:   { ...TOP, category: 'hoodies', hood: true, collar: null, width: 0.96, depth: 0.97, y0: -0.6 },
@@ -135,7 +136,7 @@ export function pocketOutlines(product) {
   const st = styleOf(product), map = pts => pts.map(([x, y]) => worldToCanvas(product, 'front', x, y));
   if (st.pocket === 'kangaroo') {
     const p = map([[-0.55, -0.42], [0.55, -0.42], [0.74, -0.82], [0.74, -1.14], [-0.74, -1.14], [-0.74, -0.82]]);
-    return { polys: [p], openings: [[p[0], p[5]], [p[1], p[2]]] };
+    return { polys: [p], openings: [[p[0], p[5]], [p[1], p[2]]], open: !!st.openPocket };
   }
   if (st.pocket === 'split') {
     const l = map([[-0.55, -0.42], [-0.06, -0.42], [-0.06, -1.14], [-0.74, -1.14], [-0.74, -0.82]]);
@@ -173,7 +174,7 @@ function foldOffset(th, x, y, z, st) {
   d += sideW * smooth01(y / 0.4) * smooth01((0.85 - y) / 0.2) * 0.016 * Math.sin(y * 14 + Math.sign(Math.sin(th)) * th * 3);
   // Low-frequency unevenness so it doesn't look machine-perfect.
   d += 0.014 * (noise3(x * 1.3 + 5, y * 1.1, z * 1.3) - 0.5);
-  return d + pocketLift(x, y, z, st.pocket);
+  return d + pocketLift(x, y, z, st.openPocket ? null : st.pocket);   // an open pocket is its own panel
 }
 
 // Body: built smooth, then every vertex is pushed along its normal by foldOffset().
@@ -267,6 +268,35 @@ function hoodGeometry(st) {
   return { geo: gridGeometry(pos, null, ROWS, COLS, false), lining: gridGeometry(inner, null, ROWS, COLS, false), left, right };
 }
 
+// Open kangaroo pocket: a separate panel over the belly, sewn on at the top, bottom and lower sides,
+// free along the slanted hand openings, where it stands away from the body so you can see inside.
+// It carries the print like the body (same UV mapping). Returns the panel and the two opening edges.
+const POCKET = { top: -0.42, bottom: -1.14, slantEnd: -0.82 };
+function pocketGeometry(st) {
+  const ROWS = 48, COLS = 56, pos = [], uv = [], left = [], right = [];
+  const { top, bottom, slantEnd } = POCKET;
+  for (let r = 0; r <= ROWS; r++) {
+    const y = lerp(bottom, top, r / ROWS);
+    const half = y > slantEnd ? 0.55 + 0.19 * (top - y) / (top - slantEnd) : 0.74;
+    const open = y > slantEnd ? Math.sin(Math.PI * (y - slantEnd) / (top - slantEnd)) : 0;
+    const [a, b] = radii(y, st);
+    for (let c = 0; c <= COLS; c++) {
+      const s = -1 + 2 * c / COLS, x = s * half;
+      const th = Math.asin(Math.max(-1, Math.min(1, x / a))), z0 = b * Math.cos(th);
+      const n = new THREE.Vector3(Math.sin(th) / a, 0, Math.cos(th) / b).normalize();
+      const bulge = 0.055 * smooth01((Math.abs(s) - 0.5) / 0.5) * open;            // gaping at the hand openings
+      const puff = 0.01 * (1 - s * s) * Math.sin(Math.PI * (y - bottom) / (top - bottom));
+      const off = foldOffset(th, x, y, z0, st) + 0.014 + bulge + puff;
+      const p = new THREE.Vector3(x + n.x * off, y, z0 + n.z * off);
+      pos.push(p.x, p.y, p.z);
+      uv.push((th + Math.PI / 2) / Math.PI * 0.5, topV(y, st));
+      if (y >= slantEnd && c === 0) left.push(p);
+      if (y >= slantEnd && c === COLS) right.push(p);
+    }
+  }
+  return { geo: gridGeometry(pos, uv, ROWS, COLS, false), openings: [left, right] };
+}
+
 // Metal zip running down the centre front, following the folded body surface.
 function zipGeometry(st, yStart, yEnd) {
   const rows = 90, pos = [];
@@ -282,6 +312,14 @@ function zipGeometry(st, yStart, yEnd) {
 
 function buildTop(group, st, m, mesh) {
   group.add(mesh(torsoGeometry(st), m.torso, 'Body_print'));
+  if (st.openPocket) {
+    const pocket = pocketGeometry(st);
+    group.add(mesh(pocket.geo, m.torso, 'Pocket_print'));
+    // Hemmed edges along the two hand openings
+    for (const edge of pocket.openings) {
+      group.add(mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(edge), 40, 0.013, 8), m.fabric, 'Pocket_hem'));
+    }
+  }
 
   // Hem band, gathering the body in
   const [ha, hb] = radii(st.y0, st);
