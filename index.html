@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="brand/mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cairo:wght@400;600;700;900&family=Tajawal:wght@500;800&family=Lalezar&family=Reem+Kufi:wght@700&family=Amiri:wght@700&family=Bebas+Neue&family=Oswald:wght@600&family=Pacifico&family=Playfair+Display:wght@700&family=Permanent+Marker&family=Anton&family=Montserrat:wght@800&family=Bangers&family=Lobster&family=Dancing+Script:wght@700&family=Righteous&family=Russo+One&family=Black+Ops+One&family=Abril+Fatface&family=Bungee&family=Great+Vibes&family=Caveat:wght@700&family=Changa:wght@700&family=El+Messiri:wght@700&family=Aref+Ruqaa:wght@700&family=Rakkas&family=Marhey:wght@700&family=Lemonada:wght@700&family=Kufam:wght@700&family=Jomhuria&family=Mirza:wght@700&family=Vibes&display=swap" rel="stylesheet">
-<script src="i18n.js?v=11"></script>
+<script src="i18n.js?v=13"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <!-- Import maps need Safari 16.4+; this polyfill makes older iPhones load the 3D modules too. -->
@@ -195,6 +195,8 @@
       <div class="chips" id="logoCats"></div>
       <div class="logo-grid" id="logoGrid"></div>
       <p class="hint" data-i18n="logos.hint"></p>
+      <h3 style="margin:14px 0 6px" data-i18n="mono.title">Your letters, CMG style</h3>
+      <div class="row"><input type="text" id="monoInput" maxlength="4" dir="auto" data-i18n-ph="mono.ph"><button class="btn primary" id="monoAdd" style="flex:none" data-i18n="mono.add"></button></div>
     </div>
 
     <div class="sec">
@@ -360,8 +362,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { EW, EH, STYLES, CATEGORIES, styleOf, buildGarment, printAreas, pocketOutlines } from './garment.js?v=11';
-import SHOP from './config.js?v=11';
+import { EW, EH, STYLES, CATEGORIES, styleOf, buildGarment, printAreas, pocketOutlines } from './garment.js?v=13';
+import SHOP from './config.js?v=13';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -875,6 +877,43 @@ function renderLogos() {
     $('#logoGrid').append(b);
   }
 }
+// A logo in CMG's shape around the customer's own letters: a C whose top arm reaches the end of the
+// first letter and whose bottom arm runs under them all. Arabic letters get the mirrored shape.
+$('#monoAdd').onclick = async () => {
+  const letters = $('#monoInput').value.trim();
+  if (!letters) return $('#monoInput').focus();
+  const ar = hasArabic(letters), font = ar ? 'Lalezar' : 'Montserrat';
+  await loadFont(font);
+  const color = isLight(state.color) ? '#111111' : '#ffffff';
+  const k = 1.6, size = ar ? 60 : 50;                   // k scales the logo's 64-unit-high drawing
+  const text = new fabric.Text(ar ? letters : letters.toUpperCase(), { fontFamily: font, fontWeight: ar ? 'normal' : 800, fontSize: size, fill: color });
+  const first = new fabric.Text([...text.text][0], { fontFamily: font, fontWeight: text.fontWeight, fontSize: size });
+  // Place by the drawn letters, not the font's box: fonts sit their letters at different heights.
+  const ink = inkBox(text), inkFirst = inkBox(first);
+  const x0 = 41 * k, w = ink.right - ink.left, w1 = inkFirst.right - inkFirst.left, cy = 32.5 * k;
+  const top = x0 + w1 + 4 * k, bottom = x0 + w + 6 * k;
+  let d = `M ${top} ${8 * k} H ${32 * k} A ${24 * k} ${24 * k} 0 0 0 ${32 * k} ${56 * k} H ${bottom}`;
+  text.set({ left: x0 - ink.left, top: cy - (ink.top + ink.bottom) / 2 });
+  if (ar) {
+    // Mirror: the C opens to the left, the first (rightmost) letter sits next to the top arm.
+    const W = bottom + 8 * k;
+    d = d.replace(/([MH]) ([\d.]+)/g, (_, c, x) => `${c} ${W - x}`).replace(/0 0 0 ([\d.]+)/, (_, x) => `0 0 1 ${W - x}`);
+    text.set({ left: W - x0 - ink.right });
+  }
+  const arc = new fabric.Path(d, { fill: '', stroke: color, strokeWidth: 9 * k, strokeLineCap: 'round', strokeLineJoin: 'round' });
+  placeNew(new fabric.Group([arc, text]), 0.45);
+};
+// Where a text object actually paints, in its own box's pixels.
+function inkBox(obj) {
+  const c = obj.toCanvasElement(), d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+  let top = c.height, bottom = 0, left = c.width, right = 0;
+  for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3] > 40) {
+    top = Math.min(top, y); bottom = Math.max(bottom, y); left = Math.min(left, x); right = Math.max(right, x);
+  }
+  return { top, bottom, left, right };
+}
+$('#monoInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('#monoAdd').click(); });
+
 // currentColor becomes white on dark garments and near-black on light ones; #fffffe marks "cut-out" parts,
 // painted in the garment color. Logos stay vector, so they print sharp.
 async function addLogo(id) {
@@ -884,7 +923,8 @@ async function addLogo(id) {
       .replace(/currentColor/g, color).replace(/#fffffe/gi, state.color);
     await Promise.all(['Lalezar', 'Bebas Neue'].map(loadFont));
     fabric.loadSVGFromString(svg, (objects, options) => {
-      for (const o of objects) if (typeof o.fill === 'string' && o.fill.toLowerCase() === state.color.toLowerCase()) o.cutout = true;
+      const isCut = v => typeof v === 'string' && v.toLowerCase() === state.color.toLowerCase();
+      for (const o of objects) if (isCut(o.fill) || isCut(o.stroke)) o.cutout = true;
       const obj = fabric.util.groupSVGElements(objects, options);
       placeNew(obj, 0.45);
     });
