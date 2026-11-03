@@ -11,7 +11,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cairo:wght@400;600;700;900&family=Tajawal:wght@500;800&family=Lalezar&family=Reem+Kufi:wght@700&family=Amiri:wght@700&family=Bebas+Neue&family=Oswald:wght@600&family=Pacifico&family=Playfair+Display:wght@700&family=Permanent+Marker&display=swap" rel="stylesheet">
 <script src="i18n.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <!-- Import maps need Safari 16.4+; this polyfill makes older iPhones load the 3D modules too. -->
 <script async src="https://cdn.jsdelivr.net/npm/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
 <script type="importmap">
@@ -117,7 +116,8 @@
   .qc { display: flex; gap: 6px; flex-wrap: wrap; }
   .qc button { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; outline: 1px solid rgba(0,0,0,.2); cursor: pointer; padding: 0; }
   .qc button.on { outline: 2px solid var(--accent); }
-  .quick-colors input[type=color] { width: 30px; height: 28px; }
+  .quick-colors input[type=color], #stringCustom { width: 30px; height: 28px; }
+  #stringCustom.on { outline: 2px solid var(--accent); }
 
   .sizes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
   .sizes label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--muted); text-align: center; }
@@ -173,7 +173,7 @@
       <div class="row" style="margin-top:10px"><input type="color" id="customColor" value="#1f2a44"><span class="hint" style="margin:0" data-i18n="color.custom"></span></div>
       <div id="stringRow" style="margin-top:14px">
         <h3 style="margin-bottom:8px" data-i18n="color.strings">Drawstring color</h3>
-        <div class="qc" id="stringSwatches"></div>
+        <div class="row" style="gap:10px"><div class="qc" id="stringSwatches"></div><input type="color" id="stringCustom" value="#e11d48" data-i18n-title="strings.custom"></div>
       </div>
     </div>
 
@@ -355,7 +355,7 @@ const COLORS = [
 ];
 const PRODUCTS = Object.fromEntries(Object.keys(STYLES).map(p => [p, { price: SHOP.prices[p] ?? 0, areas: printAreas(p) }]));
 
-const state = { product: 'hoodie', color: '#1f2a44', strings: 'white', side: 'front', qty: { S: 0, M: 1, L: 0, XL: 0, '2XL': 0 } };
+const state = { product: 'hoodie', color: '#1f2a44', strings: 'white', stringCustom: '#e11d48', side: 'front', qty: { S: 0, M: 1, L: 0, XL: 0, '2XL': 0 } };
 
 // ---------- 2D editors (Fabric.js) ----------
 Object.assign(fabric.Object.prototype, {
@@ -983,7 +983,8 @@ function renderProducts() {
     const b = document.createElement('button');
     b.textContent = T('cat.' + cat);
     b.classList.toggle('on', cat === category);
-    b.onclick = () => { category = cat; renderProducts(); };
+    // Switching category shows its first product right away; the list below picks the others.
+    b.onclick = () => { if (cat !== category) setProduct(Object.keys(STYLES).find(p => STYLES[p].category === cat)); };
     $('#catSeg').append(b);
   }
   $('#productList').innerHTML = '';
@@ -1029,6 +1030,7 @@ function labelSwatches() {
 const STRING_COLORS = [['white', '#f4f4f0'], ['black', '#1a1a1a'], ['grey', '#9ea3a8'], ['gold', '#c9a227'], ['match', null]];
 const hasStrings = () => { const st = styleOf(state.product); return !!st.hood || st.kind === 'pants'; };
 function stringHex() {
+  if (state.strings === 'custom') return state.stringCustom;
   const hex = STRING_COLORS.find(([k]) => k === state.strings)?.[1];
   return hex || '#' + new THREE.Color(state.color).multiplyScalar(0.8).getHexString();
 }
@@ -1040,11 +1042,13 @@ for (const [key, hex] of STRING_COLORS) {
   b.onclick = () => { state.strings = key; applyStrings(); };
   $('#stringSwatches').append(b);
 }
+$('#stringCustom').oninput = e => { state.strings = 'custom'; state.stringCustom = e.target.value; applyStrings(); };
 function applyStrings() {
   const hex = stringHex();
   stringMat.color.set(hex);
   realModel?.traverse(o => { if (o.isMesh && o.material.userData.string) o.material.color.set(hex); });
   $$('#stringSwatches button').forEach(b => b.classList.toggle('on', b.dataset.key === state.strings));
+  $('#stringCustom').classList.toggle('on', state.strings === 'custom');
   $('#stringRow').hidden = !hasStrings();
 }
 
@@ -1140,7 +1144,7 @@ function orderMessage(order) {
     `${T('msg.address')}: ${order.address}`,
     order.notes && `${T('msg.notes')}: ${order.notes}`,
     '',
-    T('msg.files', { file: order.zipName }),
+    T('msg.files', { count: order.quote.sides.length + 1 }),
   ].filter(l => l !== undefined && l !== false && l !== null).join('\n');
 }
 const dataUrlToBlob = url => fetch(url).then(r => r.blob());
@@ -1201,48 +1205,38 @@ $('#orderForm').onsubmit = async e => {
   try {
     const q = quote(), code = 'MG-' + Date.now().toString(36).slice(-5).toUpperCase();
     const order = {
-      code, quote: q, zipName: `${code}.zip`,
+      code, quote: q,
       name: $('#custName').value.trim(), phone: $('#custPhone').value.trim(), city: $('#custCity').value.trim(),
       address: $('#custAddr').value.trim(), notes: $('#custNotes').value.trim(),
       previewFront: $('#pvFront').src, previewBack: $('#pvBack').src,
       prints: Object.fromEntries(q.sides.map(s => [s, printFile(s)])),
     };
+    // The shop gets plain images it can open in WhatsApp: the order sheet (previews and details) and one print file per side.
     const sheet = await orderSheet(order);
-    // Everything the workshop needs in one file: summary sheet, print files, previews and the editable design.
-    const zip = new JSZip(), dir = zip.folder(code);
-    const add = async (name, url) => dir.file(name, await dataUrlToBlob(url));
-    await add('order.png', sheet);
-    for (const s of q.sides) await add(`print-${s}.png`, order.prints[s]);
-    await add('preview-front.png', order.previewFront);
-    await add('preview-back.png', order.previewBack);
-    dir.file('order.txt', orderMessage(order));
-    dir.file('design.json', JSON.stringify({ product: state.product, color: state.color, sizes: state.qty,
-      front: editors.front.toJSON(), back: editors.back.toJSON() }));
-    const zipBlob = await zip.generateAsync({ type: 'blob' });
-    const zipUrl = URL.createObjectURL(zipBlob);
-    download(zipUrl, order.zipName);
-    lastOrder = { ...order, zipUrl, sheetBlob: await dataUrlToBlob(sheet),
-      printBlobs: await Promise.all(q.sides.map(async s => [s, await dataUrlToBlob(order.prints[s])])) };
+    const images = [[`${code}-order.png`, sheet], ...q.sides.map(s => [`${code}-print-${s}.png`, order.prints[s]])];
+    lastOrder = { ...order, images, files: await Promise.all(images.map(async ([name, url]) => new File([await dataUrlToBlob(url)], name, { type: 'image/png' }))) };
+    // Phones share the images into the chat; computers download them to attach in WhatsApp Web or desktop.
+    const canShare = matchMedia('(pointer: coarse)').matches && shareFiles(true);
+    if (!canShare) downloadImages();
 
     $('#orderDlg').close();
     $('#sentStep1').textContent = T('sent.step1');
-    $('#sentStep2').innerHTML = T('sent.step2', { file: `<b>${order.zipName}</b>` });
+    $('#sentStep2').textContent = T(canShare ? 'sent.step2Share' : 'sent.step2');
     $('#sentOpen').href = `https://wa.me/${SHOP.whatsapp}?text=${encodeURIComponent(orderMessage(order))}`;
-    $('#sentShare').hidden = !shareFiles(true);
+    $('#sentShare').hidden = !canShare;
+    $('#sentAgain').hidden = canShare;
     $('#sentDlg').showModal();
   } finally {
     $('#orderBusy').hidden = true;
     $('#confirmOrder').disabled = false;
   }
 };
-$('#sentAgain').onclick = () => lastOrder && download(lastOrder.zipUrl, lastOrder.zipName);
-// On phones, the share sheet can send the images straight into a WhatsApp chat.
+function downloadImages() { lastOrder.images.forEach(([name, url], i) => setTimeout(() => download(url, name), i * 400)); }
+$('#sentAgain').onclick = () => lastOrder && downloadImages();
+// On phones, the share sheet sends the images straight into the WhatsApp chat.
 function shareFiles(checkOnly) {
-  if (!lastOrder || !navigator.canShare) return false;
-  const files = [new File([lastOrder.sheetBlob], `${lastOrder.code}-order.png`, { type: 'image/png' }),
-    ...lastOrder.printBlobs.map(([s, b]) => new File([b], `${lastOrder.code}-print-${s}.png`, { type: 'image/png' }))];
-  if (!navigator.canShare({ files })) return false;
-  if (!checkOnly) navigator.share({ files, text: `${T('msg.code')}: ${lastOrder.code}` }).catch(() => {});
+  if (!lastOrder || !navigator.canShare || !navigator.canShare({ files: lastOrder.files })) return false;
+  if (!checkOnly) navigator.share({ files: lastOrder.files }).catch(() => {});
   return true;
 }
 $('#sentShare').onclick = () => shareFiles(false);
