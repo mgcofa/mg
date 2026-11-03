@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 64" width="240" height="128">
+  <title>CMG</title>
+  <defs></defs>
+  <path d="M71 8 H32 A24 24 0 0 0 32 56 H111" fill="none" stroke="#18181b" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <g fill="none" stroke="#18181b" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><path d="M41 44 V21 L54.5 37 L68 21 V44"/><path d="M100.8 23.5 A12 12 0 1 0 104.5 34 H95"/></g>
+</svg>
