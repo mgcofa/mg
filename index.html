@@ -132,6 +132,9 @@
   .dlg h2 { margin: 0 0 14px; font-size: 18px; }
   .previews { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
   .previews img { width: 100%; border-radius: 10px; background: var(--stage); }
+  .previews img[hidden] { display: none; }
+  .ready-file { display: block; border: 1.5px dashed var(--line); border-radius: 10px; padding: 10px 12px; margin-top: 10px; font-weight: 600; font-size: 13px; cursor: pointer; }
+  .ready-file input { display: block; margin-top: 6px; font: inherit; font-weight: 400; max-width: 100%; }
   .dlg-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
   .steps { margin: 0 0 6px; padding-inline-start: 20px; line-height: 1.8; }
   .steps b { direction: ltr; unicode-bidi: isolate; }
@@ -284,6 +287,7 @@
         <button class="btn" id="exportBtn" data-i18n="order.download"></button>
         <button class="btn wa" id="orderBtn" data-i18n="order.place"></button>
       </div>
+      <button class="btn block" id="readyBtn" style="margin-top:8px" data-i18n="ready.open"></button>
     </div>
   </aside>
 </main>
@@ -306,6 +310,20 @@
     <div class="dlg-actions">
       <button type="button" class="btn" id="orderCancel" data-i18n="order.backToEdit"></button>
       <button class="btn wa" id="confirmOrder" data-i18n="order.confirm"></button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="readyDlg">
+  <form class="dlg" id="readyForm">
+    <h2 data-i18n="ready.title">Send your ready design</h2>
+    <p class="hint" style="margin-top:0" data-i18n="ready.lead"></p>
+    <label class="ready-file"><span data-i18n="ready.front"></span><input type="file" id="readyFront" accept="image/*,.pdf"></label>
+    <label class="ready-file"><span data-i18n="ready.back"></span><input type="file" id="readyBack" accept="image/*,.pdf"></label>
+    <p class="hint" data-i18n="ready.hint"></p>
+    <div class="dlg-actions">
+      <button type="button" class="btn" onclick="this.closest('dialog').close()" data-i18n="order.backToEdit"></button>
+      <button class="btn wa" data-i18n="order.confirm"></button>
     </div>
   </form>
 </dialog>
@@ -1060,7 +1078,7 @@ SIZES.forEach(s => {
   $('#sizes').append(l);
 });
 function quote() {
-  const sides = ['front', 'back'].filter(s => editors[s].getObjects().length);
+  const sides = ['front', 'back'].filter(s => ready ? ready[s] : editors[s].getObjects().length);
   const pcs = Object.values(state.qty).reduce((a, b) => a + b, 0);
   const unit = PRODUCTS[state.product].price + sides.length * SHOP.printSidePrice;
   const subtotal = unit * pcs + state.qty['2XL'] * SHOP.xxlSurcharge;
@@ -1125,6 +1143,28 @@ $('#orderBtn').onclick = () => {
 };
 $('#orderCancel').onclick = () => $('#orderDlg').close();
 
+// "Ready design": the customer already has a file, so it goes to the shop as is, without the designer.
+let ready = null;
+$('#readyBtn').onclick = () => {
+  if (!quote().pcs) return toast(T('toast.chooseSize'));
+  $('#readyDlg').showModal();
+};
+$('#readyForm').onsubmit = e => {
+  e.preventDefault();
+  const files = { front: $('#readyFront').files[0], back: $('#readyBack').files[0] };
+  if (!files.front && !files.back) return toast(T('ready.need'));
+  ready = files;
+  $('#readyDlg').close();
+  for (const [img, f] of [[$('#pvFront'), files.front], [$('#pvBack'), files.back]]) {
+    img.hidden = !f?.type.startsWith('image/');
+    img.src = img.hidden ? '' : URL.createObjectURL(f);
+  }
+  $('#dlgSummary').innerHTML = summaryHTML(quote());
+  $('#orderBusy').hidden = true;
+  $('#orderDlg').showModal();
+};
+$('#orderDlg').addEventListener('close', () => { ready = null; $('#pvFront').hidden = $('#pvBack').hidden = false; });
+
 // The order message goes to the shop's WhatsApp. Numbers use Latin digits so the shop can copy them.
 function orderMessage(order) {
   const q = order.quote, sizes = SIZES.filter(s => state.qty[s]).map(s => `${s}×${state.qty[s]}`).join('، ');
@@ -1136,15 +1176,16 @@ function orderMessage(order) {
     hasStrings() && `${T('msg.strings')}: ${stringLabel()}`,
     `${T('msg.sizes')}: ${sizes}`,
     `${T('msg.print')}: ${sidesLabel(q.sides)}`,
+    order.ready && T('msg.ready'),
     `${T('msg.total')}: ${Math.round(q.total * 100) / 100} EGP`,
     '—',
     `${T('msg.name')}: ${order.name}`,
     `${T('msg.phone')}: ${order.phone}`,
     `${T('msg.city')}: ${order.city}`,
     `${T('msg.address')}: ${order.address}`,
-    order.notes && `${T('msg.notes')}: ${order.notes}`,
+    order.notes ? `${T('msg.notes')}: ${order.notes}` : null,
     '',
-    T('msg.files', { count: order.quote.sides.length + 1 }),
+    T('msg.files', { count: order.files.length }),
   ].filter(l => l !== undefined && l !== false && l !== null).join('\n');
 }
 const dataUrlToBlob = url => fetch(url).then(r => r.blob());
@@ -1208,14 +1249,19 @@ $('#orderForm').onsubmit = async e => {
       code, quote: q,
       name: $('#custName').value.trim(), phone: $('#custPhone').value.trim(), city: $('#custCity').value.trim(),
       address: $('#custAddr').value.trim(), notes: $('#custNotes').value.trim(),
-      previewFront: $('#pvFront').src, previewBack: $('#pvBack').src,
-      prints: Object.fromEntries(q.sides.map(s => [s, printFile(s)])),
     };
-    // The shop gets plain images it can open in WhatsApp: the order sheet (previews and details) and one print file per side.
-    const sheet = await orderSheet(order);
-    const images = [[`${code}-order.png`, sheet], ...q.sides.map(s => [`${code}-print-${s}.png`, order.prints[s]])];
-    lastOrder = { ...order, images, files: await Promise.all(images.map(async ([name, url]) => new File([await dataUrlToBlob(url)], name, { type: 'image/png' }))) };
-    // Phones share the images into the chat; computers download them to attach in WhatsApp Web or desktop.
+    if (ready) {
+      // The customer's own files, untouched, renamed with the order number.
+      order.ready = true;
+      order.files = q.sides.map(s => new File([ready[s]], `${code}-design-${s}.${ready[s].name.split('.').pop().toLowerCase()}`, { type: ready[s].type }));
+    } else {
+      // Designed here: the order sheet (previews and details) and one print file per side, as plain images WhatsApp can show.
+      order.previewFront = $('#pvFront').src; order.previewBack = $('#pvBack').src;
+      order.prints = Object.fromEntries(q.sides.map(s => [s, printFile(s)]));
+      const images = [[`${code}-order.png`, await orderSheet(order)], ...q.sides.map(s => [`${code}-print-${s}.png`, order.prints[s]])];
+      order.files = await Promise.all(images.map(async ([name, url]) => new File([await dataUrlToBlob(url)], name, { type: 'image/png' })));
+    }
+    lastOrder = order;
     const canShare = matchMedia('(pointer: coarse)').matches && shareFiles(true);
     if (!canShare) downloadImages();
 
@@ -1231,7 +1277,7 @@ $('#orderForm').onsubmit = async e => {
     $('#confirmOrder').disabled = false;
   }
 };
-function downloadImages() { lastOrder.images.forEach(([name, url], i) => setTimeout(() => download(url, name), i * 400)); }
+function downloadImages() { lastOrder.files.forEach((f, i) => setTimeout(() => download(URL.createObjectURL(f), f.name), i * 400)); }
 $('#sentAgain').onclick = () => lastOrder && downloadImages();
 // On phones, the share sheet sends the images straight into the WhatsApp chat.
 function shareFiles(checkOnly) {
