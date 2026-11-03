@@ -126,7 +126,7 @@ export function printAreas(product) {
   if (st.zip === 'full') front = rect(product, 'front', 0.16 * w, 0.62 * w, 0.66, 0.2);   // left chest, beside the zip
   else if (st.zip === 'quarter') front = rect(product, 'front', -0.6 * w, 0.6 * w, 0.42, Math.max(st.y0 + 0.45, -0.75));
   else front = rect(product, 'front', -0.6 * w, 0.6 * w, 0.7, st.pocket ? -0.36 : Math.max(st.y0 + 0.4, -0.75));
-  return { front, back: rect(product, 'back', -0.66 * w, 0.66 * w, st.hood ? 0.5 : 0.75, Math.max(st.y0 + 0.4, -0.9)) };
+  return { front, back: rect(product, 'back', -0.66 * w, 0.66 * w, st.hood ? 0.62 : 0.75, Math.max(st.y0 + 0.4, -0.9)) };
 }
 
 // Stitch lines drawn on the front: pocket outlines (polygons) and pocket openings (shadowed lines), in canvas px.
@@ -230,30 +230,40 @@ function sleeveGeometry(side, st) {
   return { geo: gridGeometry(pos, null, TS, RS), curve };
 }
 
-// Hood lying flat on the back: a padded shell that follows the back surface, thickest in the
-// middle, flattening out at its edges and tip, with a raised centre seam.
+// Hood up, as on a ghost-mannequin product photo. Not a helmet: two flat-ish side panels sewn along a
+// centre seam, so the sides are flatter, the crown rises to a soft peak along the seam and leans back,
+// the face opening is a tall oval, and the fabric folds. It flares at the bottom to sit around the
+// neckline, where the two front edges meet. Returns the shell, a slightly smaller copy for the darker
+// inside (lining), and the opening's edge points (for the rolled hem).
 function hoodGeometry(st) {
-  const SV = 48, SU = 64, pos = [];
-  for (let i = 0; i <= SV; i++) {
-    const t = -0.15 + 1.15 * i / SV;                       // <0: tucks into the neckline
-    for (let j = 0; j <= SU; j++) {
-      const s = j / SU * 2 - 1;
-      const tt = Math.max(0, t);
-      const width = 0.95 * Math.sqrt(1 - 0.85 * tt ** 2.2);
-      const th = Math.PI + s * width;
-      const y = Math.min(Y1 - 0.02, 1.12 - t * 0.78);
-      const [a, b] = radii(y, st);
-      const nx = Math.sin(th) / a, nz = Math.cos(th) / b, nl = Math.hypot(nx, nz);
-      const edge = (1 - s * s) ** 0.6;
-      let h = edge * (0.045 + 0.045 * Math.sin(Math.PI * Math.min(1, tt * 1.15))) * (1 - tt ** 6);
-      h += 0.01 * Math.exp(-((s / 0.06) ** 2)) * (1 - tt);
-      h *= smooth01((t + 0.15) / 0.15);
-      const x0 = a * Math.sin(th), z0 = b * Math.cos(th);
-      h += 0.006 * (noise3(x0 * 4, y * 4, z0 * 4) - 0.5) * edge;
-      pos.push(x0 + nx / nl * (h + 0.004), y, z0 + nz / nl * (h + 0.004));
+  const ROWS = 72, COLS = 88, pos = [], inner = [], left = [], right = [];
+  const TH_TOP = 0.03 * Math.PI, TH_BOTTOM = 0.86 * Math.PI, CY = 1.78, RY = 0.66;
+  for (let i = 0; i <= ROWS; i++) {
+    const t = 1 - i / ROWS;                                       // 0 = crown … 1 = neckline (rows go up)
+    const th = lerp(TH_TOP, TH_BOTTOM, t);
+    const flare = smooth01((t - 0.62) / 0.38);                    // widens to sit around neck and shoulders
+    const rx = 0.43 * st.width * (1 + 1.15 * flare), rz = 0.6 * (1 + 0.62 * flare);
+    const cz = -0.14 * (1 - flare) - 0.13 * (1 - t) ** 2;         // sits back, crown leaning further back
+    const gap = 2.05 * Math.max(0, Math.sin(Math.PI * Math.min(1, t / 0.9))) ** 0.7;   // face-opening width (radians)
+    for (let j = 0; j <= COLS; j++) {
+      // three.js sphere convention: +z (the front) is at phi = π/2; the opening is left out around it.
+      const phi = Math.PI / 2 + gap / 2 + (2 * Math.PI - gap) * j / COLS;
+      const sx = -Math.cos(phi) * Math.sin(th), sy = Math.cos(th), sz = Math.sin(phi) * Math.sin(th);
+      const x = rx * sx, y = CY + RY * sy, z = cz + rz * sz;
+      const n = new THREE.Vector3(sx / rx, sy / RY, sz / rz).normalize();
+      // Centre seam: the panels meet in a soft ridge over the crown and down the back.
+      let d = 0.075 * Math.exp(-((x / 0.14) ** 2)) * (1 - flare) * smooth01((0.45 - sz) / 0.5);
+      // Folds: fabric sagging from the opening's edges towards the back, plus unevenness.
+      d += 0.022 * Math.sin(phi * 6 + th * 3) * Math.sin(Math.PI * t) * (1 - flare * 0.6);
+      d += 0.02 * (noise3(x * 2.5, y * 2.5, z * 2.5) - 0.5);
+      const px = x + n.x * d, py = y + n.y * d, pz = z + n.z * d;
+      pos.push(px, py, pz);
+      inner.push(px - n.x * 0.012, py - n.y * 0.012, pz - n.z * 0.012);
+      if (j === 0) right.push(new THREE.Vector3(px, py, pz));
+      if (j === COLS) left.push(new THREE.Vector3(px, py, pz));
     }
   }
-  return gridGeometry(pos, null, SV, SU);
+  return { geo: gridGeometry(pos, null, ROWS, COLS, false), lining: gridGeometry(inner, null, ROWS, COLS, false), left, right };
 }
 
 // Metal zip running down the centre front, following the folded body surface.
@@ -300,20 +310,30 @@ function buildTop(group, st, m, mesh) {
   }
 
   if (st.hood) {
-    group.add(mesh(hoodGeometry(st), m.fabric, 'Hood'));
-    const rim = mesh(new THREE.TorusGeometry(1, 0.085, 20, 96), m.fabric, 'Hood_rim');
-    rim.rotation.x = Math.PI / 2 - 0.35;
-    rim.scale.set(0.47, 0.42, 1);
-    rim.position.set(0, 1.2, -0.02);
-    group.add(rim);
-    for (const sx of [-0.13, 0.13]) {
+    const hood = hoodGeometry(st);
+    group.add(mesh(hood.geo, m.fabric, 'Hood'));
+    // Rolled hem (with the drawstring channel) all around the face opening: up the right edge, down the left.
+    const opening = [...hood.right.slice(0, -2), ...hood.left.slice(0, -2).reverse()].filter((p, i, a) => i === 0 || p.distanceTo(a[i - 1]) > 0.01);
+    group.add(mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(opening), 160, 0.045, 12), m.fabric, 'Hood_hem'));
+    // Seam where the hood is sewn onto the neckline
+    const neck = mesh(new THREE.TorusGeometry(1, 0.05, 16, 96), m.fabric, 'Hood_neck_seam');
+    neck.rotation.x = Math.PI / 2;
+    neck.scale.set(0.42, 0.37, 1);
+    neck.position.set(0, Y1 - 0.01, 0);
+    group.add(neck);
+    // The inside of the hood, in a darker shade (only its inner face is drawn), so it reads as empty fabric.
+    group.add(mesh(hood.lining, m.lining || m.fabric, 'Hood_lining'));
+    // Drawstrings come out of the hem near the bottom of the opening and hang down the chest.
+    const exitRow = Math.round(hood.right.length * 0.16);
+    for (const edge of [hood.left, hood.right]) {
+      const p = edge[exitRow], sx = Math.sign(p.x || 1) * 0.11;
       const curve = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(sx, 1.2, 0.36), new THREE.Vector3(sx * 1.05, 1.0, 0.52),
-        new THREE.Vector3(sx * 1.12, 0.75, 0.6 * st.depth), new THREE.Vector3(sx * 1.08, 0.5, 0.63 * st.depth),
+        new THREE.Vector3(p.x * 0.7, p.y - 0.02, p.z + 0.03), new THREE.Vector3(sx * 1.05, 1.1, Math.max(0.5, p.z * 0.95)),
+        new THREE.Vector3(sx * 1.12, 0.8, 0.6 * st.depth), new THREE.Vector3(sx * 1.08, 0.5, 0.63 * st.depth),
       ]);
-      group.add(mesh(new THREE.TubeGeometry(curve, 40, 0.017, 8), m.string, 'Drawstring_trim'));
-      const tip = mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.09, 12), m.tip, 'Aglet_trim');
-      tip.position.set(sx * 1.08, 0.46, 0.63 * st.depth);
+      group.add(mesh(new THREE.TubeGeometry(curve, 40, 0.018, 8), m.string, 'Drawstring_trim'));
+      const tip = mesh(new THREE.CylinderGeometry(0.023, 0.023, 0.1, 12), m.tip, 'Aglet_trim');
+      tip.position.set(sx * 1.08, 0.45, 0.63 * st.depth);
       group.add(tip);
     }
   }

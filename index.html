@@ -11,6 +11,8 @@
 <script src="i18n.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<!-- Import maps need Safari 16.4+; this polyfill makes older iPhones load the 3D modules too. -->
+<script async src="https://cdn.jsdelivr.net/npm/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
@@ -29,7 +31,7 @@
   html[lang=ar] body { font-family: Cairo, Inter, system-ui, sans-serif; }
   header { height: 56px; display: flex; align-items: center; gap: 14px; padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
   .brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 20px; letter-spacing: .5px; color: var(--text); text-decoration: none; font-family: Inter, sans-serif; }
-  .brand img { width: 32px; height: 32px; display: block; }
+  .brand img { height: 38px; width: auto; display: block; }
   .current { font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .seg { display: inline-flex; background: var(--bg); border-radius: 10px; padding: 3px; gap: 2px; }
   .seg button { border: 0; background: transparent; padding: 7px 12px; border-radius: 8px; font: inherit; font-weight: 500; color: var(--muted); cursor: pointer; }
@@ -110,6 +112,11 @@
   input[type=range] { flex: 1; accent-color: var(--accent); }
   .check { display: flex; gap: 8px; align-items: center; margin-top: 8px; font-size: 13px; cursor: pointer; }
   .out-warn { color: #b45309; font-size: 12px; margin: 8px 0 0; min-height: 18px; }
+  .quick-colors { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--accent-soft); padding: 8px 10px; border-radius: 10px; margin-top: 8px; font-size: 13px; font-weight: 600; }
+  .qc { display: flex; gap: 6px; flex-wrap: wrap; }
+  .qc button { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; outline: 1px solid rgba(0,0,0,.2); cursor: pointer; padding: 0; }
+  .qc button.on { outline: 2px solid var(--accent); }
+  .quick-colors input[type=color] { width: 30px; height: 28px; }
 
   .sizes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
   .sizes label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--muted); text-align: center; }
@@ -144,7 +151,7 @@
 </head>
 <body>
 <header>
-  <a class="brand" href="./"><img src="logo.svg" alt="MG logo">MG</a>
+  <a class="brand" href="./"><img src="logo.svg" alt="CMG"></a>
   <span class="current" id="currentProduct"></span>
   <div class="spacer"></div>
   <div class="price-pill" id="headerPrice"></div>
@@ -163,6 +170,10 @@
       <h3 data-i18n="color.title">Color</h3>
       <div class="swatches" id="swatches"></div>
       <div class="row" style="margin-top:10px"><input type="color" id="customColor" value="#1f2a44"><span class="hint" style="margin:0" data-i18n="color.custom"></span></div>
+      <div id="stringRow" style="margin-top:14px">
+        <h3 style="margin-bottom:8px" data-i18n="color.strings">Drawstring color</h3>
+        <div class="qc" id="stringSwatches"></div>
+      </div>
     </div>
 
     <div class="sec">
@@ -256,6 +267,11 @@
         <div class="ed-pane on" id="pane-front"><canvas id="ed-front"></canvas><div class="print-area" data-i18n-label="editor.printArea"></div></div>
         <div class="ed-pane" id="pane-back"><canvas id="ed-back"></canvas><div class="print-area" data-i18n-label="editor.printArea"></div></div>
       </div>
+      <div class="quick-colors" id="quickColors" hidden>
+        <span data-i18n="layer.colorTitle">Selected layer color</span>
+        <div class="qc" id="qcSwatches"></div>
+        <input type="color" id="qcCustom" data-i18n-title="color.custom">
+      </div>
       <p class="out-warn" id="outWarn"></p>
     </div>
 
@@ -338,7 +354,7 @@ const COLORS = [
 ];
 const PRODUCTS = Object.fromEntries(Object.keys(STYLES).map(p => [p, { price: SHOP.prices[p] ?? 0, areas: printAreas(p) }]));
 
-const state = { product: 'hoodie', color: '#1f2a44', side: 'front', qty: { S: 0, M: 1, L: 0, XL: 0, '2XL': 0 } };
+const state = { product: 'hoodie', color: '#1f2a44', strings: 'white', side: 'front', qty: { S: 0, M: 1, L: 0, XL: 0, '2XL': 0 } };
 
 // ---------- 2D editors (Fabric.js) ----------
 Object.assign(fabric.Object.prototype, {
@@ -466,7 +482,7 @@ controls.target.set(0, -0.05, 0);
 controls.enableDamping = true;
 controls.enablePan = false;
 controls.minDistance = 4;
-controls.maxDistance = 13;
+controls.maxDistance = 22;
 controls.minPolarAngle = 0.35;
 controls.maxPolarAngle = 2.2;
 controls.autoRotateSpeed = 2.2;
@@ -514,9 +530,11 @@ const fabricProps = { bumpMap: knit, bumpScale: 0.6, roughness: 0.92, sheen: 1, 
 const torsoMat = new THREE.MeshPhysicalMaterial({ ...fabricProps, map: designTex });
 const fabricMat = new THREE.MeshPhysicalMaterial({ ...fabricProps });
 const ribMat = new THREE.MeshPhysicalMaterial({ ...fabricProps, bumpMap: rib, bumpScale: 1.4, roughness: 0.95 });
+// Inside of the hood: only its inner face is drawn, a shade darker, so the opening reads as empty fabric.
+const liningMat = new THREE.MeshPhysicalMaterial({ ...fabricProps, side: THREE.BackSide });
 const stringMat = new THREE.MeshStandardMaterial({ color: 0xf4f4f0, roughness: 0.8 });
 const tipMat = new THREE.MeshStandardMaterial({ color: 0xc9ccd1, metalness: 0.8, roughness: 0.3 });
-const garmentMats = { torso: torsoMat, fabric: fabricMat, rib: ribMat, string: stringMat, tip: tipMat };
+const garmentMats = { torso: torsoMat, fabric: fabricMat, rib: ribMat, lining: liningMat, string: stringMat, tip: tipMat };
 
 // Built-in garments, built the first time each product is shown (geometry lives in garment.js).
 const garment = new THREE.Group();
@@ -554,7 +572,7 @@ async function loadProductModel() {
   const url = SHOP.models[product];
   if (url) {
     try {
-      const gltf = await (modelCache[url] ||= gltfLoader.loadAsync(url));
+      const gltf = await (modelCache[url] = modelCache[url] || gltfLoader.loadAsync(url));
       if (state.product !== product) return;      // user switched product while loading
       const root = gltf.scene.clone(true), prints = [];
       root.traverse(o => {
@@ -562,15 +580,20 @@ async function loadProductModel() {
         o.castShadow = o.receiveShadow = true;
         const src = Array.isArray(o.material) ? o.material[0] : o.material;
         const name = `${o.name} ${src?.name || ''}`;
+        if (/drawstring/i.test(name)) {                // recolored with the drawstring color
+          o.material = new THREE.MeshStandardMaterial({ roughness: 0.8 });
+          o.material.userData.string = true;
+          return;
+        }
         if (/trim/i.test(name)) return;
-        const isPrint = /print/i.test(name), isRib = /rib/i.test(name);
+        const isPrint = /print/i.test(name), isRib = /rib/i.test(name), isLining = /lining/i.test(name);
         // Keep the model's own fabric detail (normal/roughness/AO maps); without one, use our knit texture.
         const m = new THREE.MeshPhysicalMaterial({
           normalMap: src?.normalMap || null, roughnessMap: src?.roughnessMap || null, aoMap: src?.aoMap || null,
           bumpMap: src?.normalMap ? null : (isRib ? rib : knit), bumpScale: isRib ? 1.4 : 0.6,
-          roughness: src?.roughness ?? 0.92, sheen: 1, sheenRoughness: 0.6, side: THREE.DoubleSide,
+          roughness: src?.roughness ?? 0.92, sheen: 1, sheenRoughness: 0.6, side: isLining ? THREE.BackSide : THREE.DoubleSide,
         });
-        if (isPrint) { m.map = realPrintTex; prints.push(o); } else m.userData.tint = isRib ? 0.88 : 1;
+        if (isPrint) { m.map = realPrintTex; prints.push(o); } else m.userData.tint = isRib ? 0.88 : isLining ? 0.62 : 1;
         o.material = m;
       });
       if (!prints.length) throw new Error('no mesh named "print"');
@@ -603,17 +626,14 @@ function applyGarment() {
     o.material.sheenColor?.copy(sheen);
     if (o.material.userData.tint) o.material.color.set(state.color).multiplyScalar(o.material.userData.tint);
   });
+  applyStrings();
   fabricMat.color.set(state.color);
   ribMat.color.set(state.color).multiplyScalar(0.88);
-  for (const m of [torsoMat, fabricMat, ribMat]) m.sheenColor.copy(sheen);
-  const bottom = realModel ? new THREE.Box3().setFromObject(realModel).min.y : g.bottom;
-  shadow.position.y = bottom - 0.02;
-  // Keep the whole garment in view: tall pants need the camera further back than tops.
-  viewDistance = Math.max(8.6, -2 * (bottom + 0.05) * 2.45);
-  if (viewDistance !== lastDistance) {
-    lastDistance = viewDistance;
-    camera.position.sub(controls.target).setLength(viewDistance).add(controls.target);
-  }
+  liningMat.color.set(state.color).multiplyScalar(0.62);
+  for (const m of [torsoMat, fabricMat, ribMat, liningMat]) m.sheenColor.copy(sheen);
+  garmentSize = new THREE.Box3().setFromObject(realModel || g.group).getSize(new THREE.Vector3());
+  shadow.position.y = (realModel ? new THREE.Box3().setFromObject(realModel).min.y : g.bottom) - 0.02;
+  fitCamera();
   $('#edWrap').style.background = state.color;
   $('#edWrap').classList.toggle('light', isLight(state.color));
   layoutPrintAreas();
@@ -662,6 +682,14 @@ canvas3d.addEventListener('pointerup', e => {
   const side = hit.uv.x < 0.5 ? 'front' : 'back';
   const cx = (hit.uv.x - (side === 'back' ? 0.5 : 0)) * 2 * EW;
   const cy = (realModel ? hit.uv.y : 1 - hit.uv.y) * EH;   // glTF UVs run top-down
+  // Clicking a layer on the garment selects it (so its color can be changed right away).
+  const under = paint.on ? null : [...editors[side].getObjects()].reverse().find(o => o.containsPoint(new fabric.Point(cx, cy)));
+  if (under) {
+    setSide(side);
+    editors[side].setActiveObject(under).requestRenderAll();
+    return updateSelUI();
+  }
+  // Otherwise the selected layer moves to the clicked spot.
   const prevSide = state.side, obj = paint.on ? null : editors[prevSide].getActiveObject();
   if (obj && obj.type === 'activeSelection' && prevSide !== side) return toast(T('toast.oneLayer'));
   setSide(side);
@@ -815,12 +843,31 @@ function updateSelUI() {
   $$('.sel').forEach(b => b.disabled = !o);
   const color = o && o.type !== 'image' ? layerColor(o) : null;
   $('#selColor').disabled = !color;
-  if (color) $('#selColor').value = color;
+  if (color) $('#selColor').value = $('#qcCustom').value = color;
+  $('#quickColors').hidden = !color;
+  $$('#qcSwatches button').forEach(b => b.classList.toggle('on', !!color && b.dataset.hex === color.toLowerCase()));
   const isText = o && o.type === 'i-text';
   $('#selFont').disabled = !isText;
   if (isText) $('#selFont').value = o.fontFamily;
 }
-$('#selColor').oninput = e => { const o = ed().getActiveObject(); if (o) { recolor(o, e.target.value); o.dirty = true; ed().requestRenderAll(); } };
+function setLayerColor(c) {
+  const o = ed().getActiveObject();
+  if (!o) return;
+  recolor(o, c); o.dirty = true;
+  ed().requestRenderAll();
+  $('#textColor').value = c;          // new text uses the last color picked
+  updateSelUI();
+}
+$('#selColor').oninput = e => setLayerColor(e.target.value);
+// Quick color bar under the design area, shown while a text/logo/shape is selected.
+const QUICK_COLORS = ['#ffffff', '#111111', '#e11d48', '#facc15', '#2563eb', '#16a34a', '#f97316', '#ec4899', '#7c3aed', '#d4af37', '#9ca3af', '#1f2a44'];
+for (const hex of QUICK_COLORS) {
+  const b = document.createElement('button');
+  b.style.background = hex; b.dataset.hex = hex;
+  b.onclick = () => setLayerColor(hex);
+  $('#qcSwatches').append(b);
+}
+$('#qcCustom').oninput = e => setLayerColor(e.target.value);
 $('#selFont').onchange = async e => {
   const o = ed().getActiveObject();
   if (!o) return;
@@ -919,7 +966,7 @@ for (const [side, c] of Object.entries(editors)) {
   });
 }
 $('#undoStroke').onclick = () => {
-  const c = ed(), last = c.getObjects().at(-1);
+  const c = ed(), objs = c.getObjects(), last = objs[objs.length - 1];
   if (!last) return;
   c.remove(last);
   if (last.mirrorOf) c.remove(last.mirrorOf);
@@ -971,7 +1018,33 @@ function colorLabel() {
   const named = COLORS.find(([, hex]) => hex === state.color);
   return named ? `${T('color.' + named[0])} (${state.color})` : state.color;
 }
-function labelSwatches() { $$('.sw').forEach(s => { s.title = T('color.' + s.dataset.name); }); }
+function labelSwatches() {
+  $$('.sw').forEach(s => { s.title = T('color.' + s.dataset.name); });
+  $$('#stringSwatches button').forEach(b => { b.title = T('strings.' + b.dataset.key); });
+}
+
+// Drawstring color (hoodies and pants). "match" follows the garment color, a shade darker.
+const STRING_COLORS = [['white', '#f4f4f0'], ['black', '#1a1a1a'], ['grey', '#9ea3a8'], ['gold', '#c9a227'], ['match', null]];
+const hasStrings = () => { const st = styleOf(state.product); return !!st.hood || st.kind === 'pants'; };
+function stringHex() {
+  const hex = STRING_COLORS.find(([k]) => k === state.strings)?.[1];
+  return hex || '#' + new THREE.Color(state.color).multiplyScalar(0.8).getHexString();
+}
+const stringLabel = () => `${T('strings.' + state.strings)} (${stringHex()})`;
+for (const [key, hex] of STRING_COLORS) {
+  const b = document.createElement('button');
+  b.dataset.key = key;
+  b.style.background = hex || 'conic-gradient(#1f2a44 0 25%, #a3202a 0 50%, #f2f2ef 0 75%, #1f5a3a 0)';
+  b.onclick = () => { state.strings = key; applyStrings(); };
+  $('#stringSwatches').append(b);
+}
+function applyStrings() {
+  const hex = stringHex();
+  stringMat.color.set(hex);
+  realModel?.traverse(o => { if (o.isMesh && o.material.userData.string) o.material.color.set(hex); });
+  $$('#stringSwatches button').forEach(b => b.classList.toggle('on', b.dataset.key === state.strings));
+  $('#stringRow').hidden = !hasStrings();
+}
 
 // ---------- Order ----------
 SIZES.forEach(s => {
@@ -991,7 +1064,7 @@ function quote() {
 }
 const sidesLabel = sides => T('sides.' + (sides.length === 2 ? 'both' : sides[0] || 'none'));
 function summaryHTML(q) {
-  const [minPcs, minRate] = SHOP.bulkDiscounts.at(-1) || [10, 0.1];
+  const [minPcs, minRate] = SHOP.bulkDiscounts[SHOP.bulkDiscounts.length - 1] || [10, 0.1];
   return `
     <div><span>${T('sum.item', { product: T('product.' + state.product), sides: sidesLabel(q.sides) })}</span><span>${T('sum.perPiece', { price: money(q.unit) })}</span></div>
     <div><span>${T('sum.pieces')}</span><span>${i18n.num(q.pcs)}</span></div>
@@ -1054,6 +1127,7 @@ function orderMessage(order) {
     `${T('msg.code')}: ${order.code}`,
     `${T('msg.product')}: ${T('product.' + state.product)}`,
     `${T('msg.color')}: ${colorLabel()}`,
+    hasStrings() && `${T('msg.strings')}: ${stringLabel()}`,
     `${T('msg.sizes')}: ${sizes}`,
     `${T('msg.print')}: ${sidesLabel(q.sides)}`,
     `${T('msg.total')}: ${Math.round(q.total * 100) / 100} EGP`,
@@ -1077,8 +1151,8 @@ async function orderSheet(order) {
   const rtl = i18n.lang === 'ar', font = rtl ? 'Cairo' : 'Inter';
   await Promise.all([loadFont('Cairo'), loadFont('Inter')]);
   g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
-  g.drawImage(await loadImage('logo.svg'), 60, 50, 90, 90);
-  g.fillStyle = '#18181b'; g.font = `800 56px Inter`; g.fillText('MG', 170, 118);
+  g.drawImage(await loadImage('logo.svg'), 50, 40, 220, 110);
+  g.fillStyle = '#18181b';
   g.direction = rtl ? 'rtl' : 'ltr'; g.textAlign = rtl ? 'right' : 'left';
   const X = rtl ? W - 60 : 60;
   g.font = `700 40px ${font}`; g.fillText(`${T('sheet.title')} ${order.code}`, rtl ? X : 400, 100);
@@ -1088,7 +1162,8 @@ async function orderSheet(order) {
   g.drawImage(front, 60, 190, 545, 545); g.drawImage(back, 635, 190, 545, 545);
   const q = order.quote, sizes = SIZES.filter(s => state.qty[s]).map(s => `${s}×${state.qty[s]}`).join('   ');
   const rows = [
-    [T('msg.product'), T('product.' + state.product)], [T('msg.color'), colorLabel()], [T('msg.sizes'), sizes],
+    [T('msg.product'), T('product.' + state.product)], [T('msg.color'), colorLabel()],
+    ...(hasStrings() ? [[T('msg.strings'), stringLabel()]] : []), [T('msg.sizes'), sizes],
     [T('msg.print'), sidesLabel(q.sides)], [T('msg.total'), money(q.total)], [T('msg.name'), order.name],
     [T('msg.phone'), order.phone], [T('msg.city'), order.city], [T('msg.address'), order.address],
   ];
@@ -1184,6 +1259,19 @@ function resize() {
   camera.aspect = r.width / r.height;
   camera.updateProjectionMatrix();
   fitEditors();
+  fitCamera();
+}
+// Keep the whole garment in view: far enough back for its height (tall pants) and its width
+// (sleeves on a narrow phone screen), with a little margin.
+let garmentSize = null;
+function fitCamera() {
+  if (!garmentSize) return;
+  const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  viewDistance = Math.max(6, garmentSize.y / 2 / tanV * 1.4, garmentSize.x / 2 / (tanV * camera.aspect) * 1.18);
+  if (Math.abs(viewDistance - lastDistance) > 0.01) {
+    lastDistance = viewDistance;
+    camera.position.sub(controls.target).setLength(viewDistance).add(controls.target);
+  }
 }
 new ResizeObserver(resize).observe(canvas3d.parentElement);
 
@@ -1219,9 +1307,14 @@ i18n.onChange(() => {
   await loadFont(starterFont());
   setColor(state.color);
   loadProductModel();
+  // The starter text stays selected, so the color bar under the design area is visible from the start.
   placeNew(new fabric.IText(T('text.starter'), { fontFamily: starterFont(), fill: '#ffffff', fontSize: 64, textAlign: 'center' }), 0.8);
-  ed().discardActiveObject().requestRenderAll();
   updateSelUI();
+  // Draw the editors again once layout and web fonts have settled (otherwise they can stay blank until clicked).
+  const redraw = () => Object.values(editors).forEach(c => { c.calcOffset(); c.renderAll(); });
+  requestAnimationFrame(redraw);
+  document.fonts.ready.then(redraw);
+  setTimeout(redraw, 800);
 })();
 </script>
 </body>
