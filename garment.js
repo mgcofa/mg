@@ -165,10 +165,10 @@ function pocketLift(x, y, z, kind) {
 function foldOffset(th, x, y, z, st) {
   let d = 0;
   // Fabric puffs out just above the ribbed hem, and is gathered in under it.
-  d += 0.045 * Math.exp(-(((y - (st.y0 + 0.33)) / 0.15) ** 2)) - 0.035 * smooth01((st.y0 + 0.22 - y) / 0.12);
+  d += 0.03 * Math.exp(-(((y - (st.y0 + 0.33)) / 0.18) ** 2)) - 0.035 * smooth01((st.y0 + 0.22 - y) / 0.12);
   // Soft vertical drape folds in the lower body.
   const lower = smooth01((0.15 - y) / 1.0);
-  d += lower * 0.02 * (0.6 * Math.sin(th * 9 + 1.3 + 0.8 * Math.sin(th * 2)) + 0.4 * Math.sin(th * 14 + 0.4))
+  d += lower * 0.01 * (0.7 * Math.sin(th * 7 + 1.3 + 0.8 * Math.sin(th * 2)) + 0.3 * Math.sin(th * 11 + 0.4))
        * (0.5 + noise3(x * 2, y * 1.5, z * 2));
   // Diagonal pull wrinkles running from the armpits down the sides.
   const sideW = Math.abs(Math.sin(th)) ** 6;
@@ -221,7 +221,7 @@ function sleeveGeometry(side, st) {
     for (let j = 0; j <= RS; j++) {
       const phi = j / RS * Math.PI * 2;
       let r = lerp(0.31 * R, 0.235 * Math.min(R, 1.05), smooth01(t / 0.85));
-      r += 0.024 * smooth01((t - 0.74) / 0.06) * (1 - smooth01((t - 0.95) / 0.03)) * (0.5 + 0.5 * Math.sin(t * 70 + 2 * Math.sin(phi * 2)));
+      r += 0.012 * smooth01((t - 0.76) / 0.08) * (1 - smooth01((t - 0.95) / 0.03)) * (0.5 + 0.5 * Math.sin(t * 38 + 1.5 * Math.sin(phi * 2)));
       r += 0.014 * Math.exp(-(((t - 0.5) / 0.09) ** 2)) * Math.sin(phi * 3 + t * 30);
       r -= 0.03 * smooth01((t - 0.96) / 0.04);            // tucked into the cuff
       dir.copy(N).multiplyScalar(Math.cos(phi)).addScaledVector(B, Math.sin(phi));
@@ -428,8 +428,9 @@ function pantsOffset(st, psi, x, y, z) {
     d += 0.013 * Math.exp(-(((y - knee) / 0.14) ** 2)) * Math.sin(psi * 3 + y * 22);  // knee creases
   }
   if (st.leg === 'jogger') {                                                         // stacked above the ankle cuff
-    const w = smooth01((y - bottom - 0.08) / 0.1) * (1 - smooth01((y - bottom - 0.75) / 0.2));
-    d += 0.028 * w * (0.5 + 0.5 * Math.sin(y * 40 + 2 * Math.sin(psi * 2)));
+    // A few soft, wide folds where the fabric settles on the cuff (not tight rings).
+    const w = smooth01((y - bottom - 0.1) / 0.12) * (1 - smooth01((y - bottom - 0.55) / 0.25));
+    d += 0.012 * w * Math.sin(y * 16 + 1.5 * Math.sin(psi * 2 + y * 3));
   }
   if (st.leg === 'straight') d += 0.012 * Math.sin(psi * 5 + 1) * smooth01((crotch - y) / 1.0);   // drape folds
   return d;
