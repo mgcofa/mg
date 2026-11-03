@@ -61,7 +61,10 @@
   .preview { display: grid; place-items: center; background: repeating-conic-gradient(#ececf0 0 25%, #f7f7f9 0 50%) 0 0 / 22px 22px; border-radius: 16px; padding: 16px; min-height: 420px; }
   .preview canvas { max-width: 100%; max-height: 74vh; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,.18); }
   .busy { color: var(--muted); font-size: 13px; min-height: 20px; margin-top: 8px; }
-  @media (max-width: 860px) { .studio { grid-template-columns: 1fr; } }
+  .fb { display: grid; grid-template-columns: 260px 1fr; gap: 14px; align-items: start; }
+  .fb canvas { width: 100%; height: auto; display: block; border-radius: 10px; }
+  .fb .round canvas { border-radius: 50%; }
+  @media (max-width: 860px) { .studio, .fb { grid-template-columns: 1fr; } .fb .round { max-width: 260px; } }
 </style>
 </head>
 <body>
@@ -121,6 +124,17 @@
       <li>وريه المنتج: صورة الـ 3D بتبيع أكتر من أي كلام.</li>
       <li>من غير أسعار في الإعلانات: السعر بيبان على الموقع وهو بيصمّم.</li>
     </ul>
+  </div>
+
+  <h2>صفحة فيسبوك</h2>
+  <p class="lead">صورة البروفايل والغلاف جاهزين بالمقاس اللي فيسبوك طالبه. فيسبوك بيقص صورة البروفايل دايرة، وعلى الموبايل بيقص جناب الغلاف، فكل الكلام والصور في النص.</p>
+  <div class="fb">
+    <div class="card round"><canvas id="fbProfile" width="1080" height="1080"></canvas>
+      <p class="tile-title" style="margin-top:12px">صورة البروفايل</p><p class="tile-sub">1080 × 1080</p>
+      <button class="btn primary" id="fbProfileDl">تحميل PNG</button></div>
+    <div class="card"><canvas id="fbCover" width="1640" height="624"></canvas>
+      <p class="tile-title" style="margin-top:12px">الغلاف</p><p class="tile-sub">1640 × 624، المقاس اللي فيسبوك بينصح بيه</p>
+      <button class="btn primary" id="fbCoverDl">تحميل PNG</button></div>
   </div>
 
   <h2>مولّد الإعلانات</h2>
@@ -412,8 +426,54 @@ $('#download').onclick = () => {
   $('#ad').toBlob(blob => download(URL.createObjectURL(blob), `CMG-${state.template}-${state.product}-${state.lang}.png`), 'image/png');
 };
 
+// ---------- Facebook page: profile picture and cover ----------
+async function renderFacebook() {
+  await Promise.all(['Lalezar', 'Cairo', 'Inter'].map(f => document.fonts.load(`48px "${f}"`, 'Aa أب')));
+  const logoWhite = await loadImage('brand/logo-white.svg');
+
+  // Profile: the logo on the brand gradient, small enough to survive the circle crop.
+  const p = $('#fbProfile'), pg = ctxOf(p), S = p.width;
+  pg.fillStyle = brandGradient(pg, 0, 0, S, S); pg.fillRect(0, 0, S, S);
+  const shine = pg.createRadialGradient(S * 0.3, S * 0.25, 0, S * 0.3, S * 0.25, S * 0.8);
+  shine.addColorStop(0, 'rgba(255,255,255,0.22)'); shine.addColorStop(1, 'rgba(255,255,255,0)');
+  pg.fillStyle = shine; pg.fillRect(0, 0, S, S);
+  const lw = S * 0.64, lh = lw * logoWhite.height / logoWhite.width;
+  pg.drawImage(logoWhite, (S - lw) / 2 + S * 0.01, (S - lh) / 2, lw, lh);
+
+  // Cover: dark with brand glows, products on the left, words on the right. Everything sits inside
+  // the middle 1100px that phones keep, and the bottom-left corner stays clear for the profile picture.
+  const c = $('#fbCover'), g = ctxOf(c), W = c.width, H = c.height;
+  g.fillStyle = BRAND.ink; g.fillRect(0, 0, W, H);
+  for (const [x, y, r, col] of [[W * 0.36, H * 0.55, 520, 'rgba(79,70,229,0.55)'], [W * 0.92, H * 0.1, 560, 'rgba(147,51,234,0.38)']]) {
+    const glow = g.createRadialGradient(x, y, 0, x, y, r);
+    glow.addColorStop(0, col); glow.addColorStop(1, 'rgba(24,24,27,0)');
+    g.fillStyle = glow; g.fillRect(0, 0, W, H);
+  }
+  g.fillStyle = brandGradient(g, 0, 0, W, 0); g.fillRect(0, H - 10, W, 10);
+  const items = [['crew', '#f2f2ef', 0.5, 230], ['joggers', '#9ea3a8', 0.25, 540], ['hoodie', '#4f46e5', 0.35, 370]];
+  for (const [prod, col, az, x] of items) {
+    const shot = await renderGarment(prod, col, az);
+    g.drawImage(shot, x, prod === 'hoodie' ? 50 : 70, prod === 'hoodie' ? 500 : 440, prod === 'hoodie' ? 500 : 440);
+  }
+  const X = 1370;
+  g.drawImage(logoWhite, X - 210, 70, 210, 210 * logoWhite.height / logoWhite.width);
+  text(g, 'صمّم لبسك بنفسك', X, 290, { font: 'Lalezar', size: 78, color: '#fff' });
+  text(g, 'هودي • سويت شيرت • ترينج — بطباعتك', X, 360, { font: 'Cairo', size: 27, color: 'rgba(255,255,255,0.82)', weight: 600 });
+  text(g, 'وشوفه 3D قبل ما تطلب', X, 402, { font: 'Cairo', size: 27, color: 'rgba(255,255,255,0.82)', weight: 600 });
+  const cta = 'صمّم دلوقتي على الموقع';
+  const w = pill(g, cta, 0, -100, { size: 26, rtl: true, font: 'Cairo' });
+  pill(g, cta, X - w / 2, 480, { size: 26, rtl: true, bg: '#fff', color: BRAND.indigo, font: 'Cairo' });
+  text(g, SITE, X, 560, { font: 'Inter', size: 24, color: 'rgba(255,255,255,0.7)', rtl: false, weight: 600 });
+}
+$('#fbProfileDl').onclick = () => $('#fbProfile').toBlob(b => download(URL.createObjectURL(b), 'CMG-facebook-profile.png'), 'image/png');
+$('#fbCoverDl').onclick = () => $('#fbCover').toBlob(b => download(URL.createObjectURL(b), 'CMG-facebook-cover.png'), 'image/png');
+
 fillCopy();
-renderAd();
+renderFacebook().then(renderAd).then(() => {
+  // ?export writes the Facebook images into the page so a headless browser can save them.
+  if (!location.search.includes('export')) return;
+  for (const id of ['fbProfile', 'fbCover']) { const t = document.createElement('textarea'); t.id = 'out-' + id; t.textContent = $('#' + id).toDataURL('image/png'); document.body.append(t); }
+});
 </script>
 </body>
 </html>
