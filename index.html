@@ -9,8 +9,9 @@
 <link rel="apple-touch-icon" href="brand/mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cairo:wght@400;600;700;900&family=Tajawal:wght@500;800&family=Lalezar&family=Reem+Kufi:wght@700&family=Amiri:wght@700&family=Bebas+Neue&family=Oswald:wght@600&family=Pacifico&family=Playfair+Display:wght@700&family=Permanent+Marker&family=Anton&family=Montserrat:wght@800&family=Bangers&family=Lobster&family=Dancing+Script:wght@700&family=Righteous&family=Russo+One&family=Black+Ops+One&family=Abril+Fatface&family=Bungee&family=Great+Vibes&family=Caveat:wght@700&family=Changa:wght@700&family=El+Messiri:wght@700&family=Aref+Ruqaa:wght@700&family=Rakkas&family=Marhey:wght@700&family=Lemonada:wght@700&family=Kufam:wght@700&family=Jomhuria&family=Mirza:wght@700&family=Vibes&display=swap" rel="stylesheet">
-<script src="i18n.js?v=9"></script>
+<script src="i18n.js?v=11"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <!-- Import maps need Safari 16.4+; this polyfill makes older iPhones load the 3D modules too. -->
 <script async src="https://cdn.jsdelivr.net/npm/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
 <script type="importmap">
@@ -345,7 +346,7 @@
     <h2 data-i18n="sent.title">Last step</h2>
     <ol class="steps"><li id="sentStep1"></li><li id="sentStep2"></li></ol>
     <div class="dlg-actions">
-      <button class="btn" id="sentShare" hidden data-i18n="sent.share"></button>
+      <button class="btn wa" id="sentShare" hidden data-i18n="sent.share"></button>
       <button class="btn" id="sentAgain" data-i18n="sent.again"></button>
       <a class="btn wa" id="sentOpen" target="_blank" rel="noopener" data-i18n="sent.open"></a>
     </div>
@@ -359,8 +360,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { EW, EH, STYLES, CATEGORIES, styleOf, buildGarment, printAreas, pocketOutlines } from './garment.js?v=9';
-import SHOP from './config.js?v=9';
+import { EW, EH, STYLES, CATEGORIES, styleOf, buildGarment, printAreas, pocketOutlines } from './garment.js?v=11';
+import SHOP from './config.js?v=11';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -379,7 +380,8 @@ const FONTS = {
 };
 const starterFont = () => (i18n.lang === 'ar' ? 'Lalezar' : 'Bebas Neue');
 
-const PRINT_DPI_WIDTH = 3600;                    // print files are ~12 in wide at 300 DPI
+// Real print size: one editor unit is 1.6 mm, so the hoodie front area (190 units) prints 30 cm wide.
+const PRINT_MM_PER_UNIT = 1.6, PRINT_DPI = 300, PRINT_MAX_PX = 16e6;   // iPhones refuse canvases over ~16.7 MP
 const SIZES = ['S', 'M', 'L', 'XL', '2XL'];
 const COLORS = [
   ['black', '#111318'], ['charcoal', '#3f4148'], ['white', '#f2f2ef'], ['grey', '#9ea3a8'], ['navy', '#1f2a44'], ['royal', '#2b59c3'],
@@ -1096,7 +1098,7 @@ function setColor(c) {
 }
 function colorLabel() {
   const named = COLORS.find(([, hex]) => hex === state.color);
-  return named ? `${T('color.' + named[0])} (${state.color})` : state.color;
+  return named ? `${T('color.' + named[0])} (\u200e${state.color})` : '\u200e' + state.color;
 }
 function labelSwatches() {
   $$('.sw').forEach(s => { s.title = T('color.' + s.dataset.name); });
@@ -1111,7 +1113,7 @@ function stringHex() {
   const hex = STRING_COLORS.find(([k]) => k === state.strings)?.[1];
   return hex || '#' + new THREE.Color(state.color).multiplyScalar(0.8).getHexString();
 }
-const stringLabel = () => `${T('strings.' + state.strings)} (${stringHex()})`;
+const stringLabel = () => `${T('strings.' + state.strings)} (\u200e${stringHex()})`;
 for (const [key, hex] of STRING_COLORS) {
   const b = document.createElement('button');
   b.dataset.key = key;
@@ -1162,10 +1164,23 @@ function updateSummary() {
   $('#headerPrice').textContent = `${money(q.total)}${i18n.sep}${i18n.pcs(q.pcs)}`;
 }
 
-// High-resolution print file of one side: transparent PNG of the print area, ~3600 px wide.
-function printFile(side) {
+// High-resolution print file of one side: transparent PNG at real size, 300 DPI.
+// It covers the print area plus anything placed past its edges, so nothing the customer sees gets cut off.
+function printRect(side) {
   const a = PRODUCTS[state.product].areas[side];
-  return editors[side].toDataURL({ format: 'png', left: a.x, top: a.y, width: a.w, height: a.h, multiplier: PRINT_DPI_WIDTH / a.w });
+  let [x0, y0, x1, y1] = [a.x, a.y, a.x + a.w, a.y + a.h];
+  for (const o of editors[side].getObjects()) {
+    const r = o.getBoundingRect(true, true);
+    x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top); x1 = Math.max(x1, r.left + r.width); y1 = Math.max(y1, r.top + r.height);
+  }
+  x0 = Math.max(0, x0); y0 = Math.max(0, y0); x1 = Math.min(EW, x1); y1 = Math.min(EH, y1);
+  const w = x1 - x0, h = y1 - y0;
+  const scale = Math.min(PRINT_MM_PER_UNIT / 25.4 * PRINT_DPI, Math.sqrt(PRINT_MAX_PX / (w * h)));
+  return { left: x0, top: y0, width: w, height: h, scale, mm: [w * PRINT_MM_PER_UNIT, h * PRINT_MM_PER_UNIT] };
+}
+function printFile(side) {
+  const r = printRect(side);
+  return editors[side].toDataURL({ format: 'png', left: r.left, top: r.top, width: r.width, height: r.height, multiplier: r.scale });
 }
 function download(href, name) {
   const link = document.createElement('a');
@@ -1225,7 +1240,7 @@ $('#readyForm').onsubmit = e => {
 $('#orderDlg').addEventListener('close', () => { ready = null; $('#pvFront').hidden = $('#pvBack').hidden = false; });
 
 // The order message goes to the shop's WhatsApp. Numbers use Latin digits so the shop can copy them.
-function orderMessage(order) {
+function orderMessage(order, attached) {
   const q = order.quote, sizes = SIZES.filter(s => state.qty[s]).map(s => `${s}×${state.qty[s]}`).join('، ');
   return [
     T('msg.title'),
@@ -1244,7 +1259,7 @@ function orderMessage(order) {
     `${T('msg.address')}: ${order.address}`,
     order.notes ? `${T('msg.notes')}: ${order.notes}` : null,
     '',
-    T('msg.files', { count: order.files.length }),
+    T(attached ? 'msg.attached' : 'msg.files', { file: order.files[0].name }),
   ].filter(l => l !== undefined && l !== false && l !== null).join('\n');
 }
 const dataUrlToBlob = url => fetch(url).then(r => r.blob());
@@ -1263,9 +1278,12 @@ async function orderSheet(order) {
   const X = rtl ? W - 60 : 60;
   g.font = `700 40px ${font}`; g.fillText(`${T('sheet.title')} ${order.code}`, rtl ? X : 400, 100);
   g.font = `400 26px ${font}`; g.fillStyle = '#71717a'; g.fillText(i18n.date(Date.now()), rtl ? X : 400, 140);
-  const [front, back] = await Promise.all([loadImage(order.previewFront), loadImage(order.previewBack)]);
   g.fillStyle = '#f1f1f3'; g.fillRect(60, 190, 545, 545); g.fillRect(635, 190, 545, 545);
-  g.drawImage(front, 60, 190, 545, 545); g.drawImage(back, 635, 190, 545, 545);
+  for (const [url, x] of [[order.previewFront, rtl ? 635 : 60], [order.previewBack, rtl ? 60 : 635]]) {
+    if (!url) continue;
+    const img = await loadImage(url), k = Math.min(545 / img.width, 545 / img.height);
+    g.drawImage(img, x + (545 - img.width * k) / 2, 190 + (545 - img.height * k) / 2, img.width * k, img.height * k);
+  }
   const q = order.quote, sizes = SIZES.filter(s => state.qty[s]).map(s => `${s}×${state.qty[s]}`).join('   ');
   const rows = [
     [T('msg.product'), T('product.' + state.product)], [T('msg.color'), colorLabel()],
@@ -1280,14 +1298,15 @@ async function orderSheet(order) {
     g.font = `600 30px ${font}`; g.fillStyle = '#18181b'; g.fillText(String(v).slice(0, 60), rtl ? X - 260 : X + 260, y);
     y += 52;
   }
-  // Design thumbnails on a checkerboard (prints are transparent)
+  // Design thumbnails on the garment color, so white and black designs both show.
+  g.font = `600 22px ${font}`; g.fillStyle = '#71717a'; g.fillText(T('sheet.note'), X, y + 6);
+  y += 24;
   let x = 60;
   for (const side of q.sides) {
+    if (!order.prints[side]) continue;
     const img = await loadImage(order.prints[side]);
-    const h = 300, w = Math.min(540, img.width / img.height * h);
-    for (let cy = 0; cy < h; cy += 20) for (let cx = 0; cx < w; cx += 20) {
-      g.fillStyle = (cx + cy) / 20 % 2 ? '#ffffff' : '#e9e9ec'; g.fillRect(x + cx, y + 10 + cy, 20, 20);
-    }
+    const k = Math.min(540 / img.width, 300 / img.height), w = Math.round(img.width * k), h = Math.round(img.height * k);
+    g.fillStyle = state.color; g.fillRect(x, y + 10, w, h);
     g.drawImage(img, x, y + 10, w, h);
     g.font = `600 24px ${font}`; g.fillStyle = '#71717a'; g.textAlign = 'left'; g.direction = 'ltr';
     g.fillText(T('side.' + side), x, y + h + 44);
@@ -1297,7 +1316,34 @@ async function orderSheet(order) {
   return c.toDataURL('image/png');
 }
 
+// The whole order in one PDF: page 1 is the order sheet, then one page per printed side at its real print size.
+// WhatsApp sends a PDF as a document, so the print shop gets it at full quality instead of a compressed photo.
+async function orderPdf(order) {
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+  pdf.setProperties({ title: `CMG ${order.code}` });
+  pdf.addImage(await orderSheet(order), 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+  for (const side of order.quote.sides) {
+    const url = order.prints[side];
+    if (!url) continue;
+    const img = await loadImage(url);
+    const [w, h] = order.ready ? [300, 300 * img.height / img.width] : printRect(side).mm;
+    pdf.addPage([w, h], w > h ? 'landscape' : 'portrait');
+    // Canvas re-encodes any image type (WebP, HEIC…) as PNG, keeping transparency.
+    const png = /^data:image\/(png|jpeg)/.test(url) ? url : toPng(img);
+    pdf.addImage(png, url.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG', 0, 0, w, h, undefined, 'FAST');
+  }
+  return new File([pdf.output('blob')], `${order.code}.pdf`, { type: 'application/pdf' });
+}
+function toPng(img) {
+  const c = Object.assign(document.createElement('canvas'), { width: img.naturalWidth, height: img.naturalHeight });
+  c.getContext('2d').drawImage(img, 0, 0);
+  return c.toDataURL('image/png');
+}
+const fileToDataUrl = f => new Promise(ok => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(f); });
+
 let lastOrder = null;
+const SHOP_NUMBER = '0' + SHOP.whatsapp.replace(/^20/, '');   // 201018178072 → 01018178072, as people save it
 $('#orderForm').onsubmit = async e => {
   e.preventDefault();
   $('#orderBusy').hidden = false;
@@ -1310,24 +1356,30 @@ $('#orderForm').onsubmit = async e => {
       address: $('#custAddr').value.trim(), notes: $('#custNotes').value.trim(),
     };
     if (ready) {
-      // The customer's own files, untouched, renamed with the order number.
+      // The customer's own files: images go into the PDF at full resolution, PDFs are sent alongside as they are.
       order.ready = true;
-      order.files = q.sides.map(s => new File([ready[s]], `${code}-design-${s}.${ready[s].name.split('.').pop().toLowerCase()}`, { type: ready[s].type }));
+      order.prints = {};
+      for (const s of q.sides) if (ready[s].type.startsWith('image/')) order.prints[s] = await fileToDataUrl(ready[s]);
+      order.previewFront = order.prints.front; order.previewBack = order.prints.back;
+      order.files = [await orderPdf(order), ...q.sides.filter(s => !order.prints[s])
+        .map(s => new File([ready[s]], `${code}-design-${s}.${ready[s].name.split('.').pop().toLowerCase()}`, { type: ready[s].type }))];
     } else {
-      // Designed here: the order sheet (previews and details) and one print file per side, as plain images WhatsApp can show.
       order.previewFront = $('#pvFront').src; order.previewBack = $('#pvBack').src;
       order.prints = Object.fromEntries(q.sides.map(s => [s, printFile(s)]));
-      const images = [[`${code}-order.png`, await orderSheet(order)], ...q.sides.map(s => [`${code}-print-${s}.png`, order.prints[s]])];
-      order.files = await Promise.all(images.map(async ([name, url]) => new File([await dataUrlToBlob(url)], name, { type: 'image/png' })));
+      order.files = [await orderPdf(order)];
     }
     lastOrder = order;
     const canShare = matchMedia('(pointer: coarse)').matches && shareFiles(true);
     if (!canShare) downloadImages();
 
     $('#orderDlg').close();
-    $('#sentStep1').textContent = T('sent.step1');
-    $('#sentStep2').textContent = T(canShare ? 'sent.step2Share' : 'sent.step2');
+    // Phones send the message and the PDF together through the share sheet; computers open WhatsApp and attach the downloaded PDF.
+    $('#sentStep1').textContent = T(canShare ? 'sent.phone' : 'sent.step1', { number: SHOP_NUMBER });
+    $('#sentStep2').textContent = T('sent.step2', { file: order.files[0].name });
+    $('#sentStep2').hidden = canShare;
     $('#sentOpen').href = `https://wa.me/${SHOP.whatsapp}?text=${encodeURIComponent(orderMessage(order))}`;
+    $('#sentOpen').className = canShare ? 'btn' : 'btn wa';
+    $('#sentOpen').textContent = T(canShare ? 'sent.textOnly' : 'sent.open');
     $('#sentShare').hidden = !canShare;
     $('#sentAgain').hidden = canShare;
     $('#sentDlg').showModal();
@@ -1338,10 +1390,10 @@ $('#orderForm').onsubmit = async e => {
 };
 function downloadImages() { lastOrder.files.forEach((f, i) => setTimeout(() => download(URL.createObjectURL(f), f.name), i * 400)); }
 $('#sentAgain').onclick = () => lastOrder && downloadImages();
-// On phones, the share sheet sends the images straight into the WhatsApp chat.
+// On phones, the share sheet sends the PDF straight into the WhatsApp chat.
 function shareFiles(checkOnly) {
   if (!lastOrder || !navigator.canShare || !navigator.canShare({ files: lastOrder.files })) return false;
-  if (!checkOnly) navigator.share({ files: lastOrder.files }).catch(() => {});
+  if (!checkOnly) navigator.share({ files: lastOrder.files, text: orderMessage(lastOrder, true) }).catch(() => {});
   return true;
 }
 $('#sentShare').onclick = () => shareFiles(false);
