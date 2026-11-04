@@ -3,13 +3,14 @@ export default {
   // Orders are sent to this WhatsApp number: 01018178072, written in international format (Egypt = 20, no +, no leading 0).
   whatsapp: '201018178072',
 
-  // Price per piece in Egyptian pounds, for the blank garment.
-  prices: {
-    hoodie: 650, hoodie_plain: 620, hoodie_pockets: 680, hoodie_zip: 750, hoodie_oversized: 750, hoodie_cropped: 600,
-    crew: 500, crew_oversized: 600, quarter_zip: 650,
-    joggers: 550, sweatpants: 550, shorts: 400,
-  },
-  printSidePrice: 150,                    // added per printed side (front / back)
+  // Price per piece in Egyptian pounds, for the blank garment: the factory's wholesale price + PROFIT.
+  // Classic hoodie here has the kangaroo pocket (factory: هودي كانجارو); the one without a pocket is the factory's هودي كلاسيك.
+  prices: Object.fromEntries(Object.entries({
+    hoodie: 370, hoodie_plain: 350, hoodie_pockets: 370, hoodie_zip: 450, hoodie_oversized: 400, hoodie_cropped: 350,
+    crew: 350, quarter_zip: 400,
+    joggers: 350, sweatpants: 380, shorts: 200,
+  }).map(([k, cost]) => [k, cost + 100]).concat([['crew_oversized', 600]])),   // crew_oversized: not on the factory list yet
+  printPrices: { front: 30, back: 75 },   // added per piece for each printed side (factory: chest logo / back print)
   xxlSurcharge: 50,                       // added per 2XL piece
   bulkDiscounts: [[25, 0.20], [10, 0.10]], // [minimum pieces, discount], biggest first
 

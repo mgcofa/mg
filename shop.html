@@ -11,7 +11,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
-<script src="i18n.js?v=14"></script>
+<script src="i18n.js?v=15"></script>
 <script>document.documentElement.lang = 'ar'; document.documentElement.dir = 'rtl';</script>
 <style>
   :root { --bg: #f4f4f5; --panel: #fff; --line: #e4e4e7; --text: #18181b; --muted: #71717a; --accent: #4f46e5; --accent-soft: #eef2ff; --wa: #25d366; }
@@ -259,10 +259,10 @@ function parseRead(r, lang) {
   const product = closest(r.product, 'product.', lang), print = closest(r.print, 'sides.', lang);
   const color = named('color.', r.color, r.colorLatin), strings = r.strings != null ? named('strings.', r.strings, r.stringsLatin) : null;
   // The price comes from the shop's price list; the OCR'd total is only a fallback.
-  const sides = print ? { front: 1, back: 1, both: 2, none: 0 }[print.key] : 1;
+  const sides = print ? { front: ['front'], back: ['back'], both: ['front', 'back'], none: [] }[print.key] : ['front'];
   let unit = 0, total = +(latinDigits(r.total || '').replace(/,/g, '').match(/\d+(\.\d+)?/)?.[0] || 0), discount = 0, xxl = qty['2XL'] || 0;
   if (product && SHOP?.prices[product.key]) {
-    unit = SHOP.prices[product.key] + sides * SHOP.printSidePrice;
+    unit = SHOP.prices[product.key] + sides.reduce((a, s) => a + SHOP.printPrices[s], 0);
     const sub = unit * pcs + xxl * SHOP.xxlSurcharge, rate = SHOP.bulkDiscounts.find(([min]) => pcs >= min)?.[1] || 0;
     discount = sub * rate; total = sub - discount;
   } else { unit = Math.round(total / pcs * 100) / 100; xxl = 0; }
@@ -283,7 +283,7 @@ const LABEL_KEYS = {
 const LABELS = { ar: {}, en: {} };
 let SHOP = null;
 (async () => {
-  SHOP = (await import('./config.js')).default;
+  SHOP = (await import('./config.js?v=15')).default;
   const title = document.title, was = i18n.lang;
   for (const lang of ['ar', 'en']) {
     i18n.setLang(lang);
