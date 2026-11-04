@@ -10,6 +10,8 @@ export default {
     crew: 350, quarter_zip: 400,
     joggers: 350, sweatpants: 380, shorts: 200,
   }).map(([k, cost]) => [k, cost + 100]).concat([['crew_oversized', 600]])),   // crew_oversized: not on the factory list yet
+  // Launch offer: taken off every piece's garment price until the end date (profit 60 instead of 100). Drop it or set off: 0 to end it early.
+  launchOffer: { off: 40, until: '2026-11-18T23:59:59+02:00' },
   printPrices: { front: 30, back: 75 },   // added per piece for each printed side (factory: chest logo / back print)
   xxlSurcharge: 50,                       // added per 2XL piece
   bulkDiscounts: [[25, 0.20], [10, 0.10]], // [minimum pieces, discount], biggest first
