@@ -10,6 +10,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<script src="i18n.js?v=14"></script>
+<script>document.documentElement.lang = 'ar'; document.documentElement.dir = 'rtl';</script>
 <style>
   :root { --bg: #f4f4f5; --panel: #fff; --line: #e4e4e7; --text: #18181b; --muted: #71717a; --accent: #4f46e5; --accent-soft: #eef2ff; --wa: #25d366; }
   * { box-sizing: border-box; }
@@ -163,14 +166,132 @@ async function load(file) {
     src = { bytes, doc, pdf, data, code, sheet, sides };
     fill();
     $('#work').hidden = false;
-    status(data ? `طلب ${code}: ${sides.length} ملف طباعة.`
-      : `طلب ${code}: ${sides.length} ملف طباعة. الملف ده من قبل التحديث، فاكتب تفاصيل القطعة وبيانات الفاتورة بإيدك.`, !data);
     update();
+    if (data) return status(`طلب ${code}: ${sides.length} ملف طباعة.`);
+    // Files from before the details were stored inside: read them off the order sheet picture.
+    status(`طلب ${code}: بقرا بيانات الطلب من صفحة الملف… (أول مرة بتاخد دقيقة)`);
+    const read = await readSheet(sheet);
+    if (src.code !== code) return;
+    src.data = { ...read, date: doc.getCreationDate()?.getTime() };
+    fill(); update();
+    status(read.product || read.name
+      ? `طلب ${code}: البيانات اتملت لوحدها من صفحة الطلب. راجعها، وعدّل أي حاجة اتقرت غلط.`
+      : `طلب ${code}: معرفتش أقرا البيانات من الملف ده، اكتبها بإيدك.`, true);
   } catch (e) {
     console.error(e);
     status('الملف ده مش ملف طلب من الموقع، أو مش PDF سليم.', true);
   }
 }
+
+// ---------- Reading older order sheets ----------
+// The sheet is a picture: rows sit 52px apart from y=800, label on the reading-start side, value 260px in.
+// Each part is cut out, enlarged and read with OCR.
+let ocr;
+const ROW_KEYS = [
+  ['product', /منتج|product/i], ['color', /لون|colou?r/i], ['strings', /رباط|draw|string/i], ['sizes', /مقاس|size/i],
+  ['print', /طباع|print/i], ['total', /اجمال|total/i], ['name', /اسم|name/i], ['phone', /موبايل|mobile|phone/i],
+  ['city', /محافظ|city/i], ['address', /عنوان|address/i], ['notes', /ملاحظ|note/i],
+];
+const LATIN_ROWS = new Set(['sizes', 'phone']);   // read with the English model; the rest are Arabic text
+async function readSheet(sheet) {
+  const worker = async lang => { const w = await Tesseract.createWorker(lang, 1); await w.setParameters({ tessedit_pageseg_mode: '7' }); return w; };
+  ocr ||= Promise.all([worker('ara'), worker('eng')]).then(([ara, eng]) => ({ ara, eng }));
+  const { ara, eng } = await ocr;
+  const k = sheet.width / W, g = sheet.getContext('2d', { willReadFrequently: true });
+  const dark = (x0, x1, y0, y1) => {
+    const d = g.getImageData(x0 * k, y0 * k, (x1 - x0) * k, (y1 - y0) * k).data;
+    for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] < 450) return true;
+    return false;
+  };
+  const rtl = dark(1000, 1185, 760, 816);   // Arabic sheets start the labels on the right
+  const read = async (w, x0, x1, y0, y1) => {
+    const c = Object.assign(document.createElement('canvas'), { width: (x1 - x0) * 2 + 40, height: (y1 - y0) * 2 + 40 });
+    const cg = c.getContext('2d'); cg.fillStyle = '#fff'; cg.fillRect(0, 0, c.width, c.height);
+    cg.drawImage(sheet, x0 * k, y0 * k, (x1 - x0) * k, (y1 - y0) * k, 20, 20, c.width - 40, c.height - 40);
+    return (await w.recognize(c)).data.text.replace(/[‎‏‪-‮]/g, '').replace(/\s+/g, ' ').trim();
+  };
+  const out = {}, order = ROW_KEYS.map(([key]) => key);
+  for (let i = 0, y = 800; i < 12; i++, y += 52) {
+    const [lab, gap, val] = rtl ? [[930, 1190], [925, 1010], [40, 928]] : [[50, 312], [200, 310], [312, 1200]];
+    // A real row has a blank gap between label and value; the closing note line runs straight through it.
+    if (!dark(lab[0], lab[1], y - 36, y + 12) || dark(gap[0], gap[1], y - 36, y + 12)) break;
+    const label = norm(await read(rtl ? ara : eng, lab[0], lab[1], y - 40, y + 14));
+    const key = ROW_KEYS.find(([key, re]) => re.test(label) && !(key in out))?.[0] || order.find(key => !(key in out));
+    const box = [val[0], val[1], y - 40, y + 14];
+    out[key] = await read(LATIN_ROWS.has(key) || !rtl ? eng : ara, ...box);
+    // Colors carry a hex code in brackets, which the English model reads better.
+    if (key === 'color' || key === 'strings') out[key + 'Latin'] = await read(eng, ...box);
+  }
+  return parseRead(out, rtl ? 'ar' : 'en');
+}
+const norm = s => s.replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/ـ/g, '').replace(/[\s()]/g, '').toLowerCase();
+const latinDigits = s => s.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/٫/g, '.').replace(/٬/g, ',');
+function editDistance(a, b) {
+  const d = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let prev = d[0]; d[0] = i;
+    for (let j = 1; j <= b.length; j++) { const t = d[j]; d[j] = Math.min(d[j] + 1, d[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1)); prev = t; }
+  }
+  return d[b.length];
+}
+// The closest of the site's own labels (product names, colors…), so OCR slips snap back to the real wording.
+function closest(text, prefix, lang) {
+  const t = norm(text || '');
+  if (!t) return null;
+  let best = null;
+  for (const key of LABEL_KEYS[prefix]) {
+    const label = LABELS[lang][prefix + key], l = norm(label);
+    const score = editDistance(t.includes(l) ? l : t, l) / Math.max(l.length, 1);
+    if (!best || score < best.score) best = { key, label, score };
+  }
+  return best && best.score <= 0.5 ? best : null;
+}
+function parseRead(r, lang) {
+  const qty = {};
+  const sizes = latinDigits(r.sizes || '').toUpperCase().replace(/XXL/g, '2XL');
+  for (const m of sizes.matchAll(/(2XL|XL|L|M|S)\s*[×xX*]\s*(\d+)|(\d+)\s*[×xX*]\s*(2XL|XL|L|M|S)/g)) qty[m[1] || m[4]] = +(m[2] || m[3]);
+  const pcs = Object.values(qty).reduce((a, b) => a + b, 0) || 1;
+  const hexOf = s => (s || '').match(/#?\s?([0-9a-f]{6})\b/i)?.[1].toLowerCase();
+  const named = (prefix, text, latin) => {
+    const hit = closest(text, prefix, lang), hex = hexOf(latin) || hexOf(text);
+    return { label: hit ? hit.label + (hex ? ` (#${hex})` : '') : text || '', hex: hex ? '#' + hex : null };
+  };
+  const product = closest(r.product, 'product.', lang), print = closest(r.print, 'sides.', lang);
+  const color = named('color.', r.color, r.colorLatin), strings = r.strings != null ? named('strings.', r.strings, r.stringsLatin) : null;
+  // The price comes from the shop's price list; the OCR'd total is only a fallback.
+  const sides = print ? { front: 1, back: 1, both: 2, none: 0 }[print.key] : 1;
+  let unit = 0, total = +(latinDigits(r.total || '').replace(/,/g, '').match(/\d+(\.\d+)?/)?.[0] || 0), discount = 0, xxl = qty['2XL'] || 0;
+  if (product && SHOP?.prices[product.key]) {
+    unit = SHOP.prices[product.key] + sides * SHOP.printSidePrice;
+    const sub = unit * pcs + xxl * SHOP.xxlSurcharge, rate = SHOP.bulkDiscounts.find(([min]) => pcs >= min)?.[1] || 0;
+    discount = sub * rate; total = sub - discount;
+  } else { unit = Math.round(total / pcs * 100) / 100; xxl = 0; }
+  return {
+    product: product?.label || r.product || '', color: color.label, colorHex: color.hex, strings: strings?.label || null,
+    qty, print: print?.label || r.print || '', pcs, unit, xxl, xxlPrice: SHOP?.xxlSurcharge || 0, discount, total,
+    name: r.name || '', phone: latinDigits(r.phone || '').replace(/[^\d+]/g, ''), city: r.city || '', address: r.address || '', notes: r.notes || '',
+  };
+}
+
+// The site's own labels in both languages, and its price list.
+const LABEL_KEYS = {
+  'product.': ['hoodie', 'hoodie_plain', 'hoodie_pockets', 'hoodie_zip', 'hoodie_oversized', 'hoodie_cropped', 'crew', 'crew_oversized', 'quarter_zip', 'joggers', 'sweatpants', 'shorts'],
+  'color.': ['black', 'charcoal', 'white', 'grey', 'navy', 'royal', 'red', 'green', 'sand', 'pink', 'orange', 'purple', 'custom'],
+  'strings.': ['white', 'black', 'grey', 'gold', 'match', 'custom'],
+  'sides.': ['front', 'back', 'both', 'none'],
+};
+const LABELS = { ar: {}, en: {} };
+let SHOP = null;
+(async () => {
+  SHOP = (await import('./config.js')).default;
+  const title = document.title, was = i18n.lang;
+  for (const lang of ['ar', 'en']) {
+    i18n.setLang(lang);
+    for (const [prefix, keys] of Object.entries(LABEL_KEYS)) for (const k of keys) LABELS[lang][prefix + k] = i18n.t(prefix + k);
+  }
+  i18n.setLang(was); document.title = title;
+  document.documentElement.lang = 'ar'; document.documentElement.dir = 'rtl';   // this page is Arabic whatever the site's language
+})();
 
 async function renderPage(pdf, n, scale, bg) {
   const page = await pdf.getPage(n), vp = page.getViewport({ scale });
