@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>CMG · أدوات المحل</title>
+<link rel="icon" href="logo.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root { --bg: #f4f4f5; --panel: #fff; --line: #e4e4e7; --text: #18181b; --muted: #71717a; --accent: #4f46e5; --accent-soft: #eef2ff; --wa: #25d366; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Cairo, Inter, system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 15px; }
+  header { height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  header img { height: 30px; }
+  header b { font-size: 17px; }
+  main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 60px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 18px; }
+  h2 { margin: 0 0 4px; font-size: 18px; }
+  p.hint { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
+  .drop { display: block; border: 2px dashed #c7c7d1; border-radius: 12px; padding: 30px 16px; text-align: center; cursor: pointer; color: var(--muted); }
+  .drop.over, .drop:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+  .drop b { display: block; font-size: 17px; color: var(--text); margin-bottom: 4px; }
+  .drop input { display: none; }
+  .status { margin-top: 10px; font-size: 14px; color: var(--muted); }
+  .status.warn { color: #b45309; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .fields .wide { grid-column: 1 / -1; }
+  label.f { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); font-weight: 600; }
+  input[type=text], input[type=number], textarea { font: inherit; font-size: 15px; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: #fff; width: 100%; }
+  textarea { resize: vertical; min-height: 40px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 8px; }
+  th { font-size: 13px; color: var(--muted); text-align: start; padding: 4px; font-weight: 600; }
+  td { padding: 3px; }
+  td.n { width: 90px; }
+  td.x { width: 36px; }
+  .icon { border: 0; background: none; color: #dc2626; font-size: 18px; cursor: pointer; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--line); background: #fff; color: var(--text); padding: 10px 16px; border-radius: 10px; font: inherit; font-weight: 700; cursor: pointer; text-decoration: none; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.wa { background: var(--wa); border-color: var(--wa); color: #fff; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .total { display: flex; justify-content: space-between; font-weight: 800; font-size: 17px; margin-top: 8px; }
+  .preview { margin-top: 14px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fafafa; }
+  .preview img { display: block; width: 100%; }
+  .sizes { margin: 10px 0 0; padding: 0; list-style: none; }
+  .sizes li { padding: 6px 0; border-bottom: 1px solid var(--line); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header><img src="logo.svg" alt="CMG"><b>أدوات المحل</b></header>
+<main>
+  <section class="card">
+    <h2>ارفع ملف الطلب</h2>
+    <p class="hint">ملف الـ PDF اللي العميل بعتهولك على واتساب. هيطلعلك منه نسخة المطبعة والفاتورة. الملف بيتقري على جهازك بس، ومش بيترفع على أي سيرفر.</p>
+    <label class="drop" id="drop">
+      <b>اختار ملف الطلب (PDF)</b>
+      أو اسحبه هنا
+      <input type="file" id="pdfIn" accept="application/pdf,.pdf">
+    </label>
+    <div class="status" id="status"></div>
+  </section>
+
+  <div class="grid" id="work" hidden>
+    <section class="card">
+      <h2>نسخة المطبعة</h2>
+      <p class="hint">من غير أسعار ولا بيانات العميل. فيها صور القطعة، والتفاصيل، ومقاس كل تصميم بالسنتي، وبعدها ملفات الطباعة بالمقاس الحقيقي.</p>
+      <div class="fields">
+        <label class="f">المنتج<input type="text" id="fProduct"></label>
+        <label class="f">اللون<input type="text" id="fColor"></label>
+        <label class="f">الرباط<input type="text" id="fStrings"></label>
+        <label class="f">المقاسات<input type="text" id="fSizes"></label>
+        <label class="f wide">ملاحظات للمطبعة<textarea id="fPrintNotes" rows="2"></textarea></label>
+      </div>
+      <ul class="sizes" id="sizeList"></ul>
+      <div class="row">
+        <button class="btn primary" id="printDl">تحميل نسخة المطبعة</button>
+        <button class="btn wa" id="printShare" hidden>ابعتها على واتساب</button>
+      </div>
+      <div class="preview"><img id="printPv" alt=""></div>
+    </section>
+
+    <section class="card">
+      <h2>الفاتورة</h2>
+      <p class="hint">للعميل. تقدر تعدّل أي حاجة قبل ما تطلعها.</p>
+      <div class="fields">
+        <label class="f">رقم الفاتورة<input type="text" id="iCode"></label>
+        <label class="f">التاريخ<input type="text" id="iDate"></label>
+        <label class="f">اسم العميل<input type="text" id="iName"></label>
+        <label class="f">الموبايل<input type="text" id="iPhone" dir="ltr"></label>
+        <label class="f wide">العنوان<input type="text" id="iAddr"></label>
+      </div>
+      <table>
+        <thead><tr><th>الوصف</th><th>الكمية</th><th>سعر الوحدة</th><th></th></tr></thead>
+        <tbody id="lines"></tbody>
+      </table>
+      <button class="btn" id="addLine">+ بند</button>
+      <div class="fields" style="margin-top:12px">
+        <label class="f">خصم (ج.م)<input type="number" id="iDiscount" min="0" step="any" value="0"></label>
+        <label class="f">شحن (ج.م)<input type="number" id="iShip" min="0" step="any" value="0"></label>
+        <label class="f wide">ملاحظة في آخر الفاتورة<input type="text" id="iNote" value="الدفع عند الاستلام"></label>
+      </div>
+      <div class="total"><span>الإجمالي المطلوب</span><span id="iTotal"></span></div>
+      <div class="row">
+        <button class="btn primary" id="invDl">تحميل الفاتورة PDF</button>
+        <button class="btn" id="invPng">تحميل كصورة</button>
+        <button class="btn wa" id="invShare" hidden>ابعتها على واتساب</button>
+      </div>
+      <div class="preview"><img id="invPv" alt=""></div>
+    </section>
+  </div>
+</main>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+const $ = s => document.querySelector(s);
+const SHOP_PHONE = '01018178072', SITE = 'mgcofa.github.io/mg';
+const PT_PER_CM = 72 / 2.54;
+const W = 1240, H = 1754;   // A4 at 150 DPI, same as the order sheet
+
+let src = null;   // { bytes, doc (pdf-lib), pdf (pdf.js), data, sheet (canvas of page 1), sides: [{ label, page, cm, ink, thumb }] }
+
+// ---------- Reading the order PDF ----------
+const pdfIn = $('#pdfIn'), drop = $('#drop');
+pdfIn.onchange = () => pdfIn.files[0] && load(pdfIn.files[0]);
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); e.dataTransfer.files[0] && load(e.dataTransfer.files[0]); };
+
+function status(msg, warn) { $('#status').textContent = msg; $('#status').className = 'status' + (warn ? ' warn' : ''); }
+
+async function load(file) {
+  status('بقرا الملف…');
+  try {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const doc = await PDFLib.PDFDocument.load(bytes);
+    const pdf = await pdfjsLib.getDocument({ data: bytes.slice() }).promise;
+    const kw = doc.getKeywords() || '';
+    let data = null;
+    const m = kw.match(/CMGORDER:([A-Za-z0-9+/=]+)/);
+    if (m) try { data = JSON.parse(decodeURIComponent(escape(atob(m[1])))); } catch {}
+    const code = data?.code || (doc.getTitle() || '').replace(/^CMG\s*/, '') || file.name.replace(/\.pdf$/i, '');
+    await Promise.all([document.fonts.load('700 30px Cairo'), document.fonts.load('400 30px Cairo'), document.fonts.load('800 30px Inter')]);
+
+    const sheet = await renderPage(pdf, 1, W / doc.getPage(0).getWidth(), '#fff');
+    const sides = [];
+    for (let i = 2; i <= pdf.numPages; i++) {
+      const p = doc.getPage(i - 1), wPt = p.getWidth(), hPt = p.getHeight();
+      // Rendered on a transparent canvas so the design's own edges can be measured.
+      const scale = Math.min(60 / PT_PER_CM, 2000 / Math.max(wPt, hPt));   // up to 60 px per cm
+      const c = await renderPage(pdf, i, scale, null);
+      sides.push({
+        label: data?.sides?.[i - 2]?.label || `تصميم ${i - 1}`, page: i - 1, thumb: c,
+        cm: [wPt / PT_PER_CM, hPt / PT_PER_CM], ink: inkBox(c, wPt / PT_PER_CM / c.width),
+      });
+    }
+    src = { bytes, doc, pdf, data, code, sheet, sides };
+    fill();
+    $('#work').hidden = false;
+    status(data ? `طلب ${code}: ${sides.length} ملف طباعة.`
+      : `طلب ${code}: ${sides.length} ملف طباعة. الملف ده من قبل التحديث، فاكتب تفاصيل القطعة وبيانات الفاتورة بإيدك.`, !data);
+    update();
+  } catch (e) {
+    console.error(e);
+    status('الملف ده مش ملف طلب من الموقع، أو مش PDF سليم.', true);
+  }
+}
+
+async function renderPage(pdf, n, scale, bg) {
+  const page = await pdf.getPage(n), vp = page.getViewport({ scale });
+  const c = Object.assign(document.createElement('canvas'), { width: Math.round(vp.width), height: Math.round(vp.height) });
+  await page.render({ canvasContext: c.getContext('2d'), viewport: vp, background: bg || 'rgba(0,0,0,0)' }).promise;
+  return c;
+}
+
+// The drawn part of a transparent print page, in px and in cm.
+function inkBox(c, cmPerPx) {
+  const { data, width, height } = c.getContext('2d').getImageData(0, 0, c.width, c.height);
+  let x0 = width, y0 = height, x1 = -1, y1 = -1;
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    if (data[(y * width + x) * 4 + 3] > 20) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  }
+  if (x1 < 0) return null;
+  const w = x1 - x0 + 1, h = y1 - y0 + 1;
+  return { x: x0, y: y0, w, h, cm: [w * cmPerPx, h * cmPerPx], off: [x0 * cmPerPx, y0 * cmPerPx] };
+}
+
+const cm = v => (Math.round(v * 10) / 10).toFixed(1);
+const money = v => `${(Math.round(v * 100) / 100).toLocaleString('en-US')} ج.م`;
+
+// ---------- Form ----------
+function fill() {
+  const d = src.data || {};
+  const sizes = d.qty ? Object.entries(d.qty).map(([s, n]) => `${s}×${n}`).join('   ') : '';
+  $('#fProduct').value = d.product || ''; $('#fColor').value = d.color || ''; $('#fStrings').value = d.strings || '';
+  $('#fSizes').value = sizes; $('#fPrintNotes').value = '';
+  $('#iCode').value = src.code; $('#iDate').value = new Date(d.date || Date.now()).toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' });
+  $('#iName').value = d.name || ''; $('#iPhone').value = d.phone || '';
+  $('#iAddr').value = [d.city, d.address].filter(Boolean).join(' - ');
+  $('#iDiscount').value = d.discount ? Math.round(d.discount * 100) / 100 : 0; $('#iShip').value = 0;
+  $('#lines').innerHTML = '';
+  if (d.product) {
+    addLine(`${d.product} - ${d.print}${sizes ? ` (${sizes.replace(/ {3}/g, '، ')})` : ''}`, d.pcs, d.unit);
+    if (d.xxl) addLine('زيادة مقاس 2XL', d.xxl, d.xxlPrice);
+  } else addLine('', 1, 0);
+  $('#sizeList').innerHTML = src.sides.map(s => `<li><b>${s.label}:</b> التصميم ${s.ink ? `${cm(s.ink.cm[0])} × ${cm(s.ink.cm[1])} سم` : 'فاضي'}
+    <span style="color:var(--muted)">(ملف الطباعة ${cm(s.cm[0])} × ${cm(s.cm[1])} سم)</span></li>`).join('');
+}
+function addLine(desc = '', qty = 1, price = 0) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td><input type="text" class="d"></td><td class="n"><input type="number" class="q" min="0" step="1"></td>
+    <td class="n"><input type="number" class="p" min="0" step="any"></td><td class="x"><button class="icon" title="شيل">✕</button></td>`;
+  tr.querySelector('.d').value = desc; tr.querySelector('.q').value = qty; tr.querySelector('.p').value = price;
+  tr.querySelector('.icon').onclick = () => { tr.remove(); update(); };
+  $('#lines').append(tr);
+}
+$('#addLine').onclick = () => { addLine(); update(); };
+const lines = () => [...$('#lines').children].map(tr => ({ desc: tr.querySelector('.d').value.trim(), qty: +tr.querySelector('.q').value || 0, price: +tr.querySelector('.p').value || 0 }))
+  .filter(l => l.desc || l.qty * l.price);
+function totals() {
+  const sub = lines().reduce((a, l) => a + l.qty * l.price, 0), disc = +$('#iDiscount').value || 0, ship = +$('#iShip').value || 0;
+  return { sub, disc, ship, total: sub - disc + ship };
+}
+
+let timer;
+document.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(update, 250); });
+let printCanvas, invCanvas;
+function update() {
+  if (!src) return;
+  $('#iTotal').textContent = money(totals().total);
+  printCanvas = printSheet(); $('#printPv').src = printCanvas.toDataURL('image/jpeg', .85);
+  invCanvas = invoiceSheet(); $('#invPv').src = invCanvas.toDataURL('image/jpeg', .85);
+}
+
+// ---------- Drawing helpers ----------
+function sheetCanvas() {
+  const c = Object.assign(document.createElement('canvas'), { width: W, height: H }), g = c.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+  g.direction = 'rtl'; g.textAlign = 'right'; g.textBaseline = 'alphabetic';
+  return [c, g];
+}
+function text(g, s, x, y, { size = 28, weight = 600, color = '#18181b', align = 'right', dir = 'rtl', font = 'Cairo' } = {}) {
+  // Marks keep Latin bits like "(XL×1)" and "#f2f2ef" in reading order inside Arabic lines.
+  if (dir === 'rtl') s = String(s).replace(/#[0-9a-f]{3,8}\b/gi, '\u200e$&\u200e') + '\u200f';
+  g.font = `${weight} ${size}px ${font}, Inter`; g.fillStyle = color; g.textAlign = align; g.direction = dir; g.fillText(s, x, y);
+}
+const logo = new Image(); logo.src = 'logo.svg';
+
+// ---------- Printer copy ----------
+// Page 1 keeps the order sheet's header and the two garment previews, drops everything about price and customer,
+// and adds each design with its measured size. The real-size print pages follow untouched.
+function printSheet() {
+  const [c, g] = sheetCanvas();
+  const top = Math.round(745 * src.sheet.height / H);
+  g.drawImage(src.sheet, 0, 0, src.sheet.width, top, 0, 0, W, 745);
+  let y = 800;
+  const rows = [['المنتج', $('#fProduct').value], ['اللون', $('#fColor').value], ['الرباط', $('#fStrings').value], ['المقاسات', $('#fSizes').value]]
+    .filter(([, v]) => v.trim());
+  for (const [k, v] of rows) {
+    text(g, k, W - 60, y, { size: 28, weight: 700, color: '#71717a' });
+    text(g, v.slice(0, 60), W - 320, y, { size: 30 });
+    y += 52;
+  }
+  const notes = $('#fPrintNotes').value.trim();
+  if (notes) { text(g, 'ملاحظات', W - 60, y, { size: 28, weight: 700, color: '#71717a' }); text(g, notes.slice(0, 70), W - 320, y, { size: 28 }); y += 52; }
+
+  y += 10;
+  text(g, 'مقاسات الطباعة', W - 60, y, { size: 32, weight: 800 });
+  text(g, 'الصفحات اللي بعد كده هي ملفات الطباعة بالمقاس الحقيقي (اطبعها بنسبة 100%).', W - 60, y + 40, { size: 22, color: '#71717a' });
+  y += 70;
+  const n = src.sides.length, boxW = n > 1 ? 540 : 700, boxH = Math.min(H - y - 150, 560);
+  src.sides.forEach((s, i) => {
+    const bx = n > 1 ? (i % 2 ? 60 : W - 60 - boxW) : (W - boxW) / 2, by = y + Math.floor(i / 2) * (boxH + 140);
+    if (by + boxH > H - 40) return;
+    measured(g, s, bx, by, boxW, boxH);
+  });
+  return c;
+}
+
+// One design drawn on the garment color with dimension lines in cm, zoomed to the drawn part.
+function measured(g, s, bx, by, bw, bh) {
+  const color = src.data?.colorHex || '#d4d4d8';
+  g.fillStyle = color; g.fillRect(bx, by, bw, bh);
+  const t = s.thumb, box = s.ink || { x: 0, y: 0, w: t.width, h: t.height };
+  const m = Math.max(box.w, box.h) * 0.12;
+  const sx = Math.max(0, box.x - m), sy = Math.max(0, box.y - m);
+  const sw = Math.min(t.width, box.x + box.w + m) - sx, sh = Math.min(t.height, box.y + box.h + m) - sy;
+  const pad = 80, k = Math.min((bw - pad * 2) / sw, (bh - pad * 2) / sh);
+  const x = bx + (bw - sw * k) / 2, y = by + (bh - sh * k) / 2;
+  g.drawImage(t, sx, sy, sw, sh, x, y, sw * k, sh * k);
+  const dark = luminance(color) > 0.5, ink = dark ? '#dc2626' : '#fde047';
+  if (s.ink) {
+    const ix = x + (s.ink.x - sx) * k, iy = y + (s.ink.y - sy) * k, iw = s.ink.w * k, ih = s.ink.h * k;
+    g.strokeStyle = ink; g.fillStyle = ink; g.lineWidth = 3;
+    const below = Math.min(iy + ih + 34, by + bh - 18), side = Math.max(ix - 34, bx + 18);
+    arrow(g, ix, below, ix + iw, below);
+    arrow(g, side, iy, side, iy + ih);
+    pill(g, `${cm(s.ink.cm[0])} سم`, ix + iw / 2, below, ink);
+    pill(g, `${cm(s.ink.cm[1])} سم`, side, iy + ih / 2, ink);
+  }
+  text(g, s.label, bx + bw, by + bh + 40, { size: 28, weight: 800 });
+  text(g, s.ink ? `التصميم: عرض ${cm(s.ink.cm[0])} سم × ارتفاع ${cm(s.ink.cm[1])} سم` : 'مفيش تصميم في الصفحة دي', bx + bw, by + bh + 78, { size: 24 });
+  text(g, `ملف الطباعة: ${cm(s.cm[0])} × ${cm(s.cm[1])} سم (صفحة ${s.page + 1})`, bx + bw, by + bh + 112, { size: 22, color: '#71717a' });
+}
+function arrow(g, x0, y0, x1, y1) {
+  g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+  const a = Math.atan2(y1 - y0, x1 - x0), L = 12;
+  for (const [x, y, d] of [[x0, y0, a + Math.PI], [x1, y1, a]]) {
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x - L * Math.cos(d - .45), y - L * Math.sin(d - .45));
+    g.lineTo(x - L * Math.cos(d + .45), y - L * Math.sin(d + .45)); g.closePath(); g.fill();
+  }
+  // End ticks.
+  const px = Math.sin(a) * 10, py = -Math.cos(a) * 10;
+  for (const [x, y] of [[x0, y0], [x1, y1]]) { g.beginPath(); g.moveTo(x - px, y - py); g.lineTo(x + px, y + py); g.stroke(); }
+}
+function pill(g, s, x, y, bg) {
+  g.font = '800 22px Cairo, Inter'; const w = g.measureText(s).width + 20;
+  g.fillStyle = bg; g.beginPath(); g.roundRect(x - w / 2, y - 17, w, 34, 17); g.fill();
+  text(g, s, x, y + 8, { size: 22, weight: 800, color: luminance(bg) > 0.5 ? '#18181b' : '#fff', align: 'center' });
+}
+function luminance(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return 1;
+  const n = parseInt(m[1], 16); return (0.299 * (n >> 16) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255)) / 255;
+}
+
+async function printPdf() {
+  const out = await PDFLib.PDFDocument.create();
+  out.setTitle(`CMG ${src.code} - print`);
+  const png = await out.embedPng(await canvasBytes(printCanvas));
+  const p = out.addPage([595.28, 841.89]); p.drawImage(png, { x: 0, y: 0, width: 595.28, height: 841.89 });
+  const pages = await out.copyPages(src.doc, src.sides.map(s => s.page));
+  pages.forEach(pg => { dropUnusedImages(out, pg); out.addPage(pg); });
+  return new File([await out.save()], `${src.code}-print.pdf`, { type: 'application/pdf' });
+}
+
+// The order PDF shares one image list across its pages, so a copied print page also carries the order sheet
+// (with the customer's details) as a hidden image. Keep only the images the page actually draws.
+function dropUnusedImages(doc, page) {
+  const { PDFName, PDFRawStream, PDFArray, decodePDFRawStream } = PDFLib;
+  const xo = page.node.Resources()?.lookup(PDFName.of('XObject'));
+  if (!xo) return;
+  let contents = page.node.Contents();
+  contents = contents instanceof PDFArray ? contents.asArray().map(r => doc.context.lookup(r)) : [contents];
+  const ops = contents.map(s => new TextDecoder('latin1').decode(s instanceof PDFRawStream ? decodePDFRawStream(s).decode() : s.getContents())).join('\n');
+  const used = new Set([...ops.matchAll(/\/([^\s/<>\[\]()]+)\s+Do\b/g)].map(m => m[1]));
+  for (const key of xo.keys()) {
+    if (used.has(key.decodeText())) continue;
+    const ref = xo.get(key), mask = doc.context.lookup(ref)?.dict?.get(PDFName.of('SMask'));
+    xo.delete(key);
+    for (const r of [ref, mask]) if (r instanceof PDFLib.PDFRef) doc.context.delete(r);
+  }
+}
+
+// ---------- Invoice ----------
+function invoiceSheet() {
+  const [c, g] = sheetCanvas(), R = W - 70, L = 70;
+  g.fillStyle = '#4f46e5'; g.fillRect(0, 0, W, 14);
+  if (logo.complete && logo.naturalWidth) g.drawImage(logo, L, 60, 220, 110);
+  text(g, 'فاتورة', R, 120, { size: 64, weight: 800 });
+  text(g, `رقم: ${$('#iCode').value}`, R, 170, { size: 26, color: '#71717a' });
+  text(g, `التاريخ: ${$('#iDate').value}`, R, 206, { size: 26, color: '#71717a' });
+
+  // Customer box.
+  g.fillStyle = '#f4f4f5'; g.beginPath(); g.roundRect(L, 250, W - L * 2, 190, 16); g.fill();
+  text(g, 'فاتورة إلى', R - 30, 300, { size: 24, weight: 700, color: '#71717a' });
+  text(g, $('#iName').value, R - 30, 345, { size: 32, weight: 800 });
+  text(g, $('#iPhone').value, R - 30, 388, { size: 26 });
+  text(g, $('#iAddr').value.slice(0, 70), R - 30, 424, { size: 24, color: '#3f3f46' });
+  text(g, 'من', L + 330, 300, { size: 24, weight: 700, color: '#71717a' });
+  text(g, 'CMG', L + 330, 345, { size: 32, weight: 800, font: 'Inter' });
+  text(g, SHOP_PHONE, L + 330, 388, { size: 26 });
+  text(g, SITE, L + 330, 424, { size: 22, color: '#3f3f46', dir: 'ltr', font: 'Inter' });
+
+  // Lines table. Columns from the right: description, qty, unit, amount.
+  let y = 510;
+  const cols = { desc: R - 20, qty: L + 560, unit: L + 380, amt: L + 20 };
+  g.fillStyle = '#18181b'; g.beginPath(); g.roundRect(L, y - 44, W - L * 2, 64, 10); g.fill();
+  text(g, 'الوصف', cols.desc, y, { size: 24, weight: 700, color: '#fff' });
+  text(g, 'الكمية', cols.qty, y, { size: 24, weight: 700, color: '#fff', align: 'center' });
+  text(g, 'سعر الوحدة', cols.unit, y, { size: 24, weight: 700, color: '#fff', align: 'center' });
+  text(g, 'الإجمالي', cols.amt, y, { size: 24, weight: 700, color: '#fff', align: 'left', dir: 'rtl' });
+  y += 70;
+  for (const l of lines()) {
+    const parts = wrap(g, l.desc, 560, '600 26px Cairo');
+    parts.forEach((t, i) => text(g, t, cols.desc, y + i * 36, { size: 26 }));
+    text(g, String(l.qty), cols.qty, y, { size: 26, align: 'center' });
+    text(g, money(l.price), cols.unit, y, { size: 26, align: 'center' });
+    text(g, money(l.qty * l.price), cols.amt, y, { size: 26, weight: 700, align: 'left' });
+    y += 36 * parts.length + 26;
+    g.fillStyle = '#e4e4e7'; g.fillRect(L, y - 40, W - L * 2, 2);
+  }
+
+  // Totals, on the amount side.
+  const t = totals(), tx = L + 470;
+  y += 20;
+  const row = (k, v, o = {}) => { text(g, k, tx, y, { size: 26, color: '#3f3f46', ...o }); text(g, v, L + 20, y, { size: 26, align: 'left', ...o }); y += 48; };
+  row('المجموع', money(t.sub));
+  if (t.disc) row('الخصم', '− ' + money(t.disc));
+  if (t.ship) row('الشحن', money(t.ship));
+  g.fillStyle = '#4f46e5'; g.beginPath(); g.roundRect(L, y - 34, 470, 72, 12); g.fill();
+  text(g, 'الإجمالي المطلوب', tx - 20, y + 12, { size: 28, weight: 800, color: '#fff' });
+  text(g, money(t.total), L + 24, y + 12, { size: 30, weight: 800, color: '#fff', align: 'left' });
+
+  const note = $('#iNote').value.trim();
+  if (note) text(g, note, R, H - 170, { size: 28, weight: 700 });
+  text(g, 'شكرًا إنك اخترت CMG. صمّم لبسك بنفسك.', R, H - 120, { size: 24, color: '#71717a' });
+  g.fillStyle = '#4f46e5'; g.fillRect(0, H - 14, W, 14);
+  return c;
+}
+function wrap(g, s, max, font) {
+  g.font = font; const out = []; let cur = '';
+  for (const w of s.split(/\s+/)) {
+    const next = cur ? cur + ' ' + w : w;
+    if (g.measureText(next).width > max && cur) { out.push(cur); cur = w; } else cur = next;
+  }
+  return out.length || cur ? [...out, cur] : [''];
+}
+async function invoicePdf() {
+  const out = await PDFLib.PDFDocument.create();
+  out.setTitle(`CMG فاتورة ${$('#iCode').value}`);
+  const img = await out.embedJpg(await canvasBytes(invCanvas, 'image/jpeg'));
+  out.addPage([595.28, 841.89]).drawImage(img, { x: 0, y: 0, width: 595.28, height: 841.89 });
+  return new File([await out.save()], `${$('#iCode').value}-invoice.pdf`, { type: 'application/pdf' });
+}
+
+// ---------- Output ----------
+const canvasBytes = (c, type = 'image/png') => new Promise(ok => c.toBlob(b => b.arrayBuffer().then(a => ok(new Uint8Array(a))), type, .92));
+function save(file) {
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(file), download: file.name });
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+const phone = matchMedia('(pointer: coarse)').matches && !!navigator.canShare;
+$('#printShare').hidden = $('#invShare').hidden = !phone;
+async function busy(btn, fn) {
+  btn.disabled = true;
+  try { update(); await fn(); } catch (e) { if (e.name !== 'AbortError') { console.error(e); status('حصلت مشكلة، جرّب تاني.', true); } }
+  finally { btn.disabled = false; }
+}
+$('#printDl').onclick = e => busy(e.target, async () => save(await printPdf()));
+$('#invDl').onclick = e => busy(e.target, async () => save(await invoicePdf()));
+$('#invPng').onclick = e => busy(e.target, async () => save(new File([await canvasBytes(invCanvas)], `${$('#iCode').value}-invoice.png`, { type: 'image/png' })));
+$('#printShare').onclick = e => busy(e.target, async () => navigator.share({ files: [await printPdf()] }));
+$('#invShare').onclick = e => busy(e.target, async () => navigator.share({ files: [await invoicePdf()] }));
+</script>
+</body>
+</html>
