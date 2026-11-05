@@ -11,7 +11,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
-<script src="i18n.js?v=30"></script>
+<script src="i18n.js?v=31"></script>
 <script>document.documentElement.lang = 'ar'; document.documentElement.dir = 'rtl';</script>
 <style>
   :root { --bg: #f4f4f5; --panel: #fff; --line: #e4e4e7; --text: #18181b; --muted: #71717a; --accent: #4f46e5; --accent-soft: #eef2ff; --wa: #25d366; }
@@ -283,7 +283,7 @@ const LABEL_KEYS = {
 const LABELS = { ar: {}, en: {} };
 let SHOP = null;
 (async () => {
-  SHOP = (await import('./config.js?v=30')).default;
+  SHOP = (await import('./config.js?v=31')).default;
   const title = document.title, was = i18n.lang;
   for (const lang of ['ar', 'en']) {
     i18n.setLang(lang);
@@ -320,7 +320,7 @@ const money = v => `${(Math.round(v * 100) / 100).toLocaleString('en-US')} ج.م
 function fill() {
   const d = src.data || {};
   const sizes = d.qty ? Object.entries(d.qty).map(([s, n]) => `${s}×${n}`).join('   ') : '';
-  $('#fProduct').value = d.product || ''; $('#fColor').value = d.color || ''; $('#fStrings').value = d.strings || '';
+  $('#fProduct').value = d.product || ''; $('#fColor').value = (d.color || '') + (d.rib ? ` – الأساور والأستيك: ${d.rib}` : ''); $('#fStrings').value = d.strings || '';
   $('#fSizes').value = sizes; $('#fPrintNotes').value = '';
   $('#iCode').value = src.code; $('#iDate').value = new Date(d.date || Date.now()).toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' });
   $('#iName').value = d.name || ''; $('#iPhone').value = d.phone || '';
