@@ -60,6 +60,7 @@
   .colorpick button.on { outline: 2px solid var(--indigo); }
   .preview { display: grid; place-items: center; background: repeating-conic-gradient(#ececf0 0 25%, #f7f7f9 0 50%) 0 0 / 22px 22px; border-radius: 16px; padding: 16px; min-height: 420px; }
   .preview canvas { max-width: 100%; max-height: 74vh; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,.18); }
+  .controls label.check { display: flex; gap: 8px; align-items: center; font-weight: 600; }
   .busy { color: var(--muted); font-size: 13px; min-height: 20px; margin-top: 8px; }
   .fb { display: grid; grid-template-columns: 260px 1fr; gap: 14px; align-items: start; }
   .fb canvas { width: 100%; height: auto; display: block; border-radius: 10px; }
@@ -159,6 +160,33 @@
       <p class="busy" id="busy"></p>
     </div>
     <div class="preview"><canvas id="ad"></canvas></div>
+  </div>
+  <h2>إعلان من صور الاستوديو</h2>
+  <p class="lead">صمّم القطعة في الاستوديو، خد لها سكرين شوت (من صورة لحد ٣ صور)، وارفعها هنا. الصفحة بتشيل الخلفية الرمادي وتحط القطع في إعلان جاهز لفيسبوك وانستجرام.</p>
+  <div class="studio">
+    <div class="card controls">
+      <label for="shotFiles">صور التصميم</label>
+      <input type="file" id="shotFiles" accept="image/*" multiple>
+      <p class="tile-sub" style="margin:6px 0 0">الصورة الأخيرة بتبقى قدّام. اسحب في الاستوديو لحد ما القطعة تبان كلها.</p>
+      <label class="check"><input type="checkbox" id="shotCut"> قصّ القطعة من الخلفية (للألوان الغامقة بس)</label>
+      <label>المقاس</label>
+      <div class="templates" id="shotSizes"></div>
+      <label>الخلفية</label>
+      <div class="templates" id="shotThemes"></div>
+      <label for="shotHead">العنوان</label>
+      <textarea id="shotHead">كمّل
+بستايلك انت</textarea>
+      <label for="shotSub">الكلام الصغير</label>
+      <textarea id="shotSub">صمّم الهودي بنفسك على الموقع
+وشوفه 3D قبل ما تطلب</textarea>
+      <label class="check"><input type="checkbox" id="shotOffer"> شريط عرض الافتتاح</label>
+      <input type="text" id="shotOfferText">
+      <label for="shotCta">الزرار</label>
+      <input type="text" id="shotCta" value="صمّم دلوقتي على الموقع">
+      <div class="row" style="margin-top:16px"><button class="btn primary big" id="shotDl">تحميل الصورة PNG</button></div>
+      <p class="busy" id="shotBusy"></p>
+    </div>
+    <div class="preview"><canvas id="shotAd" width="1080" height="1350"></canvas></div>
   </div>
 </main>
 
@@ -467,6 +495,213 @@ async function renderFacebook() {
 }
 $('#fbProfileDl').onclick = () => $('#fbProfile').toBlob(b => download(URL.createObjectURL(b), 'CMG-facebook-profile.png'), 'image/png');
 $('#fbCoverDl').onclick = () => $('#fbCover').toBlob(b => download(URL.createObjectURL(b), 'CMG-facebook-cover.png'), 'image/png');
+
+// ---------- Ad from studio screenshots ----------
+// Cuts the studio's light grey backdrop out of a screenshot: flood-fills from the edges through pixels that
+// stay close to that row's backdrop color and change smoothly, then softens the garment's outline.
+function cutout(img, removeBg) {
+  const w = img.naturalWidth, h = img.naturalHeight;
+  const c = Object.assign(document.createElement('canvas'), { width: w, height: h }), g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(img, 0, 0);
+  const d = g.getImageData(0, 0, w, h), p = d.data;
+  const ref = new Float32Array(h * 3);
+  for (let y = 0; y < h; y++) {
+    const s = [0, 0, 0];
+    for (const x of [0, 1, 2, 3, w - 4, w - 3, w - 2, w - 1]) for (let k = 0; k < 3; k++) s[k] += p[(y * w + x) * 4 + k] / 8;
+    // Where the garment reaches the side edge, keep the backdrop color from the row above.
+    if (y && Math.abs(s[0] - ref[y * 3 - 3]) + Math.abs(s[1] - ref[y * 3 - 2]) + Math.abs(s[2] - ref[y * 3 - 1]) > 20) for (let k = 0; k < 3; k++) s[k] = ref[y * 3 - 3 + k];
+    ref.set(s, y * 3);
+  }
+  const toBg = i => { const y = (i / w) | 0; return Math.abs(p[i * 4] - ref[y * 3]) + Math.abs(p[i * 4 + 1] - ref[y * 3 + 1]) + Math.abs(p[i * 4 + 2] - ref[y * 3 + 2]); };
+  const mid = (h / 2 | 0) * 3, bg = `rgb(${ref[mid] | 0},${ref[mid + 1] | 0},${ref[mid + 2] | 0})`;
+  // The garment's box: rows and columns with a real run of pixels that differ from the backdrop.
+  const rows = new Uint32Array(h), cols = new Uint32Array(w);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (toBg(y * w + x) > 24) { rows[y]++; cols[x]++; }
+  const minRun = 6;
+  let y0 = rows.findIndex(n => n > minRun), y1 = h - 1 - [...rows].reverse().findIndex(n => n > minRun);
+  let x0 = cols.findIndex(n => n > minRun), x1 = w - 1 - [...cols].reverse().findIndex(n => n > minRun);
+  if (y0 < 0 || x0 < 0) { x0 = 0; y0 = 0; x1 = w - 1; y1 = h - 1; }
+  const cutBottom = y1 >= h - 4;
+  const m = Math.round(Math.max(x1 - x0, y1 - y0) * 0.04);
+  x0 = Math.max(0, x0 - m); x1 = Math.min(w - 1, x1 + m); y0 = Math.max(0, y0 - m); y1 = cutBottom ? h - 1 : Math.min(h - 1, y1 + m);
+  if (removeBg) {
+    // Flood the backdrop from the edges through smooth, backdrop-colored pixels (works for pieces that aren't white or light grey).
+    const T_ABS = 26, T_STEP = 10, mask = new Uint8Array(w * h), q = new Int32Array(w * h);
+    let head = 0, tail = 0;
+    const step = (i, j) => Math.abs(p[i * 4] - p[j * 4]) + Math.abs(p[i * 4 + 1] - p[j * 4 + 1]) + Math.abs(p[i * 4 + 2] - p[j * 4 + 2]);
+    const seed = i => { if (!mask[i] && toBg(i) < T_ABS) { mask[i] = 1; q[tail++] = i; } };
+    for (let x = 0; x < w; x++) seed(x);
+    for (let y = 0; y < h; y++) { seed(y * w); seed(y * w + w - 1); }
+    while (head < tail) {
+      const i = q[head++], x = i % w;
+      for (const j of [i - w, i + w, x ? i - 1 : -1, x < w - 1 ? i + 1 : -1]) {
+        if (j < 0 || j >= w * h || mask[j]) continue;
+        if (toBg(j) < T_ABS && step(i, j) < T_STEP) { mask[j] = 1; q[tail++] = j; }
+      }
+    }
+    for (let i = 0; i < w * h; i++) if (mask[i]) p[i * 4 + 3] = 0;
+    g.putImageData(d, 0, 0);
+  }
+  const out = Object.assign(document.createElement('canvas'), { width: x1 - x0 + 1, height: y1 - y0 + 1 });
+  out.getContext('2d').drawImage(c, -x0, -y0);
+  return { canvas: out, cutBottom, bg, cut: removeBg };
+}
+
+// Fades a screenshot's edges to transparent so its backdrop melts into the ad (bottom stays hard when the hem is cut there).
+function feathered(pc, dw, dh) {
+  const c = Object.assign(document.createElement('canvas'), { width: Math.round(dw), height: Math.round(dh) }), g = c.getContext('2d');
+  g.drawImage(pc.canvas, 0, 0, c.width, c.height);
+  if (pc.cut) return c;
+  g.globalCompositeOperation = 'destination-in';
+  const f = Math.min(c.width, c.height) * 0.1;
+  const sides = [[0, 0, f, 0], [c.width, 0, c.width - f, 0], [0, 0, 0, f]].concat(pc.cutBottom ? [] : [[0, c.height, 0, c.height - f]]);
+  for (const [ax, ay, bx, by] of sides) {
+    const gr = g.createLinearGradient(ax, ay, bx, by); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,1)');
+    g.fillStyle = gr; g.fillRect(0, 0, c.width, c.height);
+  }
+  return c;
+}
+
+const SHOT_SIZES = { feed: ['بوست ٤:٥', 1080, 1350], square: ['مربع', 1080, 1080], story: ['ستوري', 1080, 1920] };
+const SHOT_THEMES = { light: 'فاتح', brand: 'ألوان CMG', dark: 'غامق' };
+const shot = { size: 'feed', theme: 'light', pieces: [] };
+let siteConfig = null;
+import('./config.js').then(m => {
+  siteConfig = m.default;
+  const o = siteConfig.launchOffer;
+  if (o?.off && new Date(o.until) > new Date()) {
+    const day = new Date(o.until).toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', timeZone: 'Africa/Cairo' });
+    $('#shotOfferText').value = `عرض الافتتاح: خصم ${o.off.toLocaleString('ar-EG')} ج.م على كل قطعة لحد ${day}`;
+    $('#shotOffer').checked = true;
+  }
+  renderShotAd();
+}).catch(() => {});
+
+for (const [k, [label]] of Object.entries(SHOT_SIZES)) {
+  const b = Object.assign(document.createElement('button'), { textContent: label }); b.dataset.k = k;
+  b.onclick = () => { shot.size = k; renderShotAd(); }; $('#shotSizes').append(b);
+}
+for (const [k, label] of Object.entries(SHOT_THEMES)) {
+  const b = Object.assign(document.createElement('button'), { textContent: label }); b.dataset.k = k;
+  b.onclick = () => { shot.theme = k; renderShotAd(); }; $('#shotThemes').append(b);
+}
+async function loadShots(files) {
+  $('#shotBusy').textContent = 'جارٍ تجهيز الصور…';
+  shot.images = await Promise.all([...files].slice(0, 3).map(f => loadImage(typeof f === 'string' ? f : URL.createObjectURL(f))));
+  cutAll();
+}
+function cutAll() {
+  shot.pieces = (shot.images || []).map(img => cutout(img, $('#shotCut').checked));
+  renderShotAd();
+}
+$('#shotFiles').onchange = e => e.target.files.length && loadShots(e.target.files);
+$('#shotCut').onchange = cutAll;
+for (const id of ['shotHead', 'shotSub', 'shotCta', 'shotOfferText']) $('#' + id).oninput = () => renderShotAd();
+$('#shotOffer').onchange = () => renderShotAd();
+window.cmgLoadShots = loadShots;   // lets a test load sample screenshots by URL
+
+function wrapLines(g, str, maxW) {
+  const out = [];
+  for (const para of String(str).split('\n')) {
+    let line = '';
+    for (const word of para.split(' ')) {
+      const t = line ? line + ' ' + word : word;
+      if (line && g.measureText(t).width > maxW) { out.push(line); line = word; } else line = t;
+    }
+    out.push(line);
+  }
+  return out;
+}
+
+async function renderShotAd() {
+  $$('#shotSizes button').forEach(b => b.classList.toggle('on', b.dataset.k === shot.size));
+  $$('#shotThemes button').forEach(b => b.classList.toggle('on', b.dataset.k === shot.theme));
+  await Promise.all(['Lalezar', 'Cairo', 'Inter'].map(f => document.fonts.load(`48px "${f}"`, 'Aa أب')));
+  const [, W, H] = SHOT_SIZES[shot.size];
+  const c = $('#shotAd'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  const dark = shot.theme !== 'light';
+  const ink = dark ? '#ffffff' : BRAND.ink, soft = dark ? 'rgba(255,255,255,0.85)' : '#3f3f46';
+  const tall = H / W > 1.5, sq = W === H, P = sq ? 56 : 70;
+
+  // Background. On the light theme it takes the studio backdrop's own color, so the screenshots melt into it.
+  const backdrop = shot.pieces.find(pc => !pc.cut)?.bg || '#eeeef0';
+  if (shot.theme === 'light') {
+    g.fillStyle = backdrop; g.fillRect(0, 0, W, H);
+  } else if (shot.theme === 'brand') {
+    g.fillStyle = brandGradient(g, 0, 0, W, H); g.fillRect(0, 0, W, H);
+  } else {
+    g.fillStyle = BRAND.ink; g.fillRect(0, 0, W, H);
+  }
+  // Header: logo, headline, sub line.
+  const logo = await loadImage(dark ? 'brand/logo-white.svg' : 'brand/logo.svg');
+  const lw = tall ? 250 : sq ? 150 : 200;
+  g.drawImage(logo, W - P - lw, P - 10, lw, lw * logo.height / logo.width);
+  let y = P - 10 + lw * logo.height / logo.width + (tall ? 120 : sq ? 70 : 90);
+  const hs = tall ? 120 : sq ? 70 : 92;
+  g.font = `${hs}px Lalezar`;
+  const heads = wrapLines(g, $('#shotHead').value, W - 2 * P);
+  text(g, heads.join('\n'), W - P, y, { font: 'Lalezar', size: hs, color: ink, lh: 1.12 });
+  y += (heads.length - 1) * hs * 1.12 + (tall ? 70 : 54);
+  const ss = tall ? 38 : sq ? 26 : 31;
+  g.font = `600 ${ss}px Cairo`;
+  const subs = wrapLines(g, $('#shotSub').value, W - 2 * P);
+  text(g, subs.join('\n'), W - P, y, { font: 'Cairo', size: ss, color: soft, lh: 1.5, weight: 600 });
+  y += (subs.length - 1) * ss * 1.5 + 30;
+
+  // Footer: offer ribbon and call to action.
+  const footH = tall ? 300 : 215;
+  const footY = H - footH;
+  // Products: same height, overlapping a little, standing on the footer (a cut-off hem hides behind it).
+  const pieces = shot.pieces;
+  if (pieces.length) {
+    const top = y - 30, bottom = footY + 8, areaH = bottom - top;
+    const n = pieces.length, overlap = n > 1 ? 0.2 : 0;
+    let scale = Math.min(...pieces.map(pc => areaH / pc.canvas.height));
+    const total = s => pieces.reduce((t, pc) => t + pc.canvas.width * s, 0) * (1 - overlap) + pieces[pieces.length - 1].canvas.width * s * overlap;
+    if (total(scale) > W - 40) scale *= (W - 40) / total(scale);
+    let x = (W - total(scale)) / 2;
+    // On colored backgrounds the uncut screenshots sit on a rounded card in the backdrop color.
+    if (shot.theme !== 'light' && pieces.some(pc => !pc.cut)) {
+      g.save(); g.fillStyle = backdrop; g.shadowColor = 'rgba(0,0,0,0.3)'; g.shadowBlur = 50;
+      const cardTop = bottom - Math.max(...pieces.map(pc => pc.canvas.height * scale)) - 40;
+      g.beginPath(); g.roundRect(30, cardTop, W - 60, bottom - cardTop, [36, 36, 0, 0]); g.fill(); g.restore();
+    }
+    pieces.forEach(pc => {
+      const dw = pc.canvas.width * scale, dh = pc.canvas.height * scale;
+      const dy = pc.cutBottom ? bottom - dh : bottom - dh - 10;
+      g.save();
+      if (pc.cut) { g.shadowColor = 'rgba(30,20,60,0.28)'; g.shadowBlur = 40; g.shadowOffsetY = 18; }
+      g.drawImage(feathered(pc, dw, dh), x, dy);
+      g.restore();
+      x += dw * (1 - overlap);
+    });
+  } else {
+    g.save(); g.fillStyle = soft; g.font = `600 ${ss}px Cairo`; g.textAlign = 'center'; g.direction = 'rtl';
+    g.fillText('ارفع صور التصميم من الاستوديو', W / 2, (y + footY) / 2); g.restore();
+  }
+
+  g.fillStyle = shot.theme === 'light' ? brandGradient(g, 0, footY, W, H) : shot.theme === 'brand' ? '#24163f' : '#0b0b0f';
+  g.fillRect(0, footY, W, footH);
+  let fy = footY + (tall ? 70 : 50);
+  if ($('#shotOffer').checked && $('#shotOfferText').value.trim()) {
+    const os = tall ? 34 : 28;
+    g.save(); g.font = `700 ${os}px Cairo`;
+    const ow = Math.min(W - 2 * P, g.measureText($('#shotOfferText').value).width + os * 1.6), oh = os * 1.9;
+    g.fillStyle = '#fde047'; g.beginPath(); g.roundRect((W - ow) / 2, fy - oh / 2, ow, oh, 12); g.fill();
+    g.fillStyle = BRAND.ink; g.textAlign = 'center'; g.textBaseline = 'middle'; g.direction = 'rtl';
+    g.fillText($('#shotOfferText').value, W / 2, fy + 2, ow - os); g.restore();
+    fy += tall ? 105 : 72;
+  } else fy += tall ? 30 : 15;
+  const cs = tall ? 40 : 32;
+  pill(g, $('#shotCta').value, W / 2, fy, { size: cs, rtl: true, bg: '#fff', color: BRAND.indigo, font: 'Cairo' });
+  fy += tall ? 90 : 62;
+  const wa = siteConfig ? '0' + siteConfig.whatsapp.slice(2) : '';
+  text(g, SITE + (wa ? '   •   واتساب ' + wa : ''), W / 2, fy, { font: 'Cairo', size: tall ? 30 : 24, color: 'rgba(255,255,255,0.92)', align: 'center', weight: 700 });
+  $('#shotBusy').textContent = '';
+}
+$('#shotDl').onclick = () => $('#shotAd').toBlob(b => download(URL.createObjectURL(b), `CMG-ad-${shot.size}.png`), 'image/png');
+renderShotAd();
 
 fillCopy();
 renderFacebook().then(renderAd).then(() => {
