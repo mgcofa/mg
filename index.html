@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="brand/mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cairo:wght@400;600;700;900&family=Tajawal:wght@500;800&family=Lalezar&family=Reem+Kufi:wght@700&family=Amiri:wght@700&family=Bebas+Neue&family=Oswald:wght@600&family=Pacifico&family=Playfair+Display:wght@700&family=Permanent+Marker&family=Anton&family=Montserrat:wght@800&family=Bangers&family=Lobster&family=Dancing+Script:wght@700&family=Righteous&family=Russo+One&family=Black+Ops+One&family=Abril+Fatface&family=Bungee&family=Great+Vibes&family=Caveat:wght@700&family=Changa:wght@700&family=El+Messiri:wght@700&family=Aref+Ruqaa:wght@700&family=Rakkas&family=Marhey:wght@700&family=Lemonada:wght@700&family=Kufam:wght@700&family=Jomhuria&family=Mirza:wght@700&family=Vibes&display=swap" rel="stylesheet">
-<script src="i18n.js?v=21"></script>
+<script src="i18n.js?v=23"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <!-- Import maps need Safari 16.4+; this polyfill makes older iPhones load the 3D modules too. -->
@@ -28,6 +28,11 @@
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   html, body { margin: 0; height: 100%; }
+  body { display: flex; flex-direction: column; }
+  header { flex: none; }
+  .policy { flex: none; padding: 12px 16px; background: #b91c1c; color: #fff; font-size: 15.5px; font-weight: 600; line-height: 1.55; text-align: center; }
+  .policy b { font-weight: 800; }
+  .policy-note { margin: 10px 0 0; padding: 8px 10px; border-radius: 8px; background: #fef2f2; color: #991b1b; font-size: 12.5px; font-weight: 600; line-height: 1.5; }
   body { font-family: Inter, Cairo, system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
   html[lang=ar] body { font-family: Cairo, Inter, system-ui, sans-serif; }
   header { height: 56px; display: flex; align-items: center; gap: 14px; padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
@@ -41,7 +46,7 @@
   .spacer { flex: 1; }
   .price-pill { font-weight: 700; white-space: nowrap; }
 
-  .app { display: grid; grid-template-columns: 290px minmax(0,1fr) 480px; height: calc(100% - 56px); }
+  .app { display: grid; grid-template-columns: 290px minmax(0,1fr) 480px; flex: 1; min-height: 0; }
   aside { background: var(--panel); overflow-y: auto; padding: 16px; }
   aside.tools { border-inline-end: 1px solid var(--line); }
   aside.editor { border-inline-start: 1px solid var(--line); }
@@ -175,6 +180,7 @@
   .busy { color: var(--muted); font-size: 13px; }
 
   @media (max-width: 1100px) {
+    body { display: block; }   /* the page scrolls as one column */
     .app { grid-template-columns: 1fr; height: auto; }
     .stage { height: 62vh; }
     aside.tools, aside.editor { border: 0; border-top: 1px solid var(--line); }
@@ -196,6 +202,7 @@
   <div class="price-pill" id="headerPrice"></div>
   <button class="btn" id="langBtn" data-i18n="lang.switch">English</button>
 </header>
+<div class="policy" role="note"><b data-i18n="policy.title"></b> <span data-i18n="policy.text"></span></div>
 
 <main class="app">
   <aside class="tools">
@@ -347,6 +354,7 @@
     <h2 data-i18n="order.review">Review your order</h2>
     <div class="previews"><img id="pvFront" data-i18n-alt="order.frontPreview"><img id="pvBack" data-i18n-alt="order.backPreview"></div>
     <div class="summary" id="dlgSummary"></div>
+    <p class="policy-note" data-i18n="policy.short"></p>
     <div class="grid2">
       <input type="text" id="custName" data-i18n-ph="order.name" required autocomplete="name">
       <input type="tel" id="custPhone" data-i18n-ph="order.phone" required autocomplete="tel" pattern="[0-9+ ]{8,15}">
@@ -370,6 +378,7 @@
     <label class="ready-file"><span data-i18n="ready.front"></span><input type="file" id="readyFront" accept="image/*,.pdf"></label>
     <label class="ready-file"><span data-i18n="ready.back"></span><input type="file" id="readyBack" accept="image/*,.pdf"></label>
     <p class="hint" data-i18n="ready.hint"></p>
+    <p class="policy-note" data-i18n="policy.short"></p>
     <div class="dlg-actions">
       <button type="button" class="btn" onclick="this.closest('dialog').close()" data-i18n="order.backToEdit"></button>
       <button class="btn wa" data-i18n="order.confirm"></button>
@@ -396,8 +405,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { EW, EH, STYLES, CATEGORIES, styleOf, buildGarment, printAreas, pocketOutlines } from './garment.js?v=21';
-import SHOP from './config.js?v=21';
+import { EW, EH, STYLES, CATEGORIES, styleOf, buildGarment, printAreas, pocketOutlines } from './garment.js?v=23';
+import SHOP from './config.js?v=23';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
