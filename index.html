@@ -1775,6 +1775,18 @@ SIZES.forEach(s => {
   l.querySelector('input').oninput = e => { state.qty[s] = Math.max(0, parseInt(e.target.value) || 0); updateSummary(); renderChart(); };
   $('#sizes').append(l);
 });
+// Number boxes: tapping one clears a 0 (or selects the number) so the customer types straight away; left empty, it goes back to 0.
+document.addEventListener('focusin', e => {
+  const inp = e.target;
+  if (!inp.matches?.('input[type=number]')) return;
+  if (inp.value === '0') { inp.dataset.wasZero = '1'; inp.value = ''; } else setTimeout(() => inp.select?.(), 0);
+});
+document.addEventListener('focusout', e => {
+  const inp = e.target;
+  if (!inp.matches?.('input[type=number]') || !inp.dataset.wasZero) return;
+  delete inp.dataset.wasZero;
+  if (inp.value === '') { inp.value = '0'; inp.dispatchEvent(new Event('input', { bubbles: true })); }
+});
 function syncSizeInputs() { $$('#sizes input').forEach((inp, i) => { inp.value = state.qty[SIZES[i]]; }); renderChart(); }
 
 // Standard measurements in cm (garment laid flat; length from the shoulder or waistband).
