@@ -27,6 +27,43 @@
   ]
  },
  {
+  "cat": "football",
+  "items": [
+   "football-ball",
+   "football-fireball",
+   "football-trophy",
+   "football-pitch",
+   "football-goal",
+   "football-whistle",
+   "football-jersey10",
+   "football-jersey7",
+   "football-cards",
+   "football-captain",
+   "football-kingPitch",
+   "football-goalText",
+   "football-gooool",
+   "football-matchday",
+   "football-footballLife",
+   "football-noFootball",
+   "football-minutes90",
+   "football-player12",
+   "football-koraWbas",
+   "football-ashe2",
+   "football-hayati",
+   "football-tiki",
+   "football-sundayLeague",
+   "football-baller",
+   "football-fc",
+   "football-hatTrick",
+   "football-kickoff",
+   "football-score",
+   "football-pharaohs",
+   "football-yallaMasr",
+   "football-dribble",
+   "football-boot"
+  ]
+ },
+ {
   "cat": "vibes",
   "items": [
    "vibes-sabr",
