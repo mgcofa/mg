@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="brand/mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cairo:wght@400;600;700;900&family=Tajawal:wght@500;800&family=Lalezar&family=Reem+Kufi:wght@700&family=Amiri:wght@700&family=Bebas+Neue&family=Oswald:wght@600&family=Pacifico&family=Playfair+Display:wght@700&family=Permanent+Marker&family=Anton&family=Montserrat:wght@800&family=Bangers&family=Lobster&family=Dancing+Script:wght@700&family=Righteous&family=Russo+One&family=Black+Ops+One&family=Abril+Fatface&family=Bungee&family=Great+Vibes&family=Caveat:wght@700&family=Changa:wght@700&family=El+Messiri:wght@700&family=Aref+Ruqaa:wght@700&family=Rakkas&family=Marhey:wght@700&family=Lemonada:wght@700&family=Kufam:wght@700&family=Jomhuria&family=Mirza:wght@700&family=Vibes&display=swap" rel="stylesheet">
-<script src="i18n.js?v=32"></script>
+<script src="i18n.js?v=33"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <!-- Import maps need Safari 16.4+; this polyfill makes older iPhones load the 3D modules too. -->
@@ -165,6 +165,19 @@
   .sizes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
   .sizes label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--muted); text-align: center; }
   .sizes input { text-align: center; padding: 7px 4px; }
+  .fit-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; font-weight: 600; font-size: 13px; }
+  .chart-head { display: flex; align-items: center; justify-content: space-between; margin: 12px 0 6px; font-size: 13px; }
+  .chart-head .seg button { padding: 4px 10px; }
+  .size-chart { width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; }
+  .size-chart th { color: var(--muted); font-weight: 600; padding: 4px 2px; border-bottom: 1px solid var(--line); }
+  .size-chart td { padding: 5px 2px; border-bottom: 1px solid var(--line); }
+  .size-chart tr.on td { background: var(--accent-soft); font-weight: 700; }
+  .size-chart td:first-child { font-weight: 700; }
+  #customToggle { margin-top: 10px; }
+  .custom-size { margin-top: 8px; padding: 10px; border: 1px dashed var(--line); border-radius: 10px; }
+  .custom-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; }
+  .custom-fields label, .custom-qty { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--muted); }
+  .custom-qty { margin-top: 8px; max-width: 120px; }
   .summary { margin: 14px 0; font-size: 13px; }
   .summary div { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; color: var(--muted); }
   .summary .total { color: var(--text); font-weight: 700; font-size: 16px; border-top: 1px solid var(--line); margin-top: 6px; padding-top: 8px; }
@@ -217,6 +230,10 @@
       <h3 data-i18n="product.title">Product</h3>
       <div class="seg full" id="catSeg"></div>
       <div class="products" id="productList"></div>
+      <div class="fit-row" id="fitRow" hidden>
+        <span data-i18n="fit.title">Fit</span>
+        <div class="seg" id="fitSeg"><button data-fit="men" class="on" data-i18n="fit.men"></button><button data-fit="women" data-i18n="fit.women"></button></div>
+      </div>
     </div>
 
     <div class="sec">
@@ -249,6 +266,7 @@
       <p class="hint" data-i18n="logos.hint"></p>
       <h3 style="margin:14px 0 6px" data-i18n="mono.title">Your letters, CMG style</h3>
       <div class="row"><input type="text" id="monoInput" maxlength="4" dir="auto" data-i18n-ph="mono.ph"><button class="btn primary" id="monoAdd" style="flex:none" data-i18n="mono.add"></button></div>
+      <label class="check" style="margin-top:6px"><input type="checkbox" id="monoInC"> <span data-i18n="mono.inC">Inside the CMG "C"</span></label>
       <h3 style="margin:14px 0 6px" data-i18n="jersey.title">Fan jersey: your name and number</h3>
       <div class="row"><input type="text" id="jerseyName" maxlength="12" dir="auto" data-i18n-ph="jersey.name"><input type="text" id="jerseyNum" maxlength="2" inputmode="numeric" style="width:64px;flex:none" data-i18n-ph="jersey.num"><button class="btn primary" id="jerseyAdd" style="flex:none" data-i18n="jersey.add"></button></div>
     </div>
@@ -362,6 +380,17 @@
     <div class="sec">
       <h3 data-i18n="order.sizes">Sizes & quantity</h3>
       <div class="sizes" id="sizes"></div>
+      <div class="chart-head">
+        <b data-i18n="chart.title">Size chart</b>
+        <div class="seg" id="unitSeg"><button data-u="cm" class="on" data-i18n="unit.cm"></button><button data-u="in" data-i18n="unit.in"></button></div>
+      </div>
+      <table class="size-chart" id="sizeChart"></table>
+      <button class="btn block" id="customToggle" data-i18n="custom.add"></button>
+      <div class="custom-size" id="customBox" hidden>
+        <div class="custom-fields" id="customFields"></div>
+        <label class="custom-qty"><span data-i18n="custom.qty"></span><input type="number" id="customQty" min="0" max="99" value="1"></label>
+        <p class="hint" style="margin:6px 0 0" data-i18n="custom.hint"></p>
+      </div>
       <div class="summary" id="summary"></div>
       <div class="grid2">
         <button class="btn" id="exportBtn" data-i18n="order.download"></button>
@@ -429,8 +458,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { EW, EH, STYLES, CATEGORIES, styleOf, buildGarment, printAreas, pocketOutlines } from './garment.js?v=32';
-import SHOP from './config.js?v=32';
+import { EW, EH, STYLES, CATEGORIES, styleOf, buildGarment, printAreas, pocketOutlines } from './garment.js?v=33';
+import SHOP from './config.js?v=33';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -475,7 +504,7 @@ const PRODUCTS = Object.fromEntries(Object.keys(STYLES).map(p => [p, {
 }]));
 
 let pieceBusy = false;   // true while switching between his and hers pieces
-const state = { product: 'hoodie', color: '#1f2a44', strings: 'white', stringCustom: '#e11d48', side: 'front', qty: { S: 0, M: 1, L: 0, XL: 0, '2XL': 0 }, set: null, rib: null };
+const state = { product: 'hoodie', color: '#1f2a44', strings: 'white', stringCustom: '#e11d48', side: 'front', qty: { S: 0, M: 1, L: 0, XL: 0, '2XL': 0 }, set: null, rib: null, fit: 'men', unit: 'cm', custom: null };
 
 // ---------- 2D editors (Fabric.js) ----------
 Object.assign(fabric.Object.prototype, {
@@ -730,8 +759,55 @@ let realModel = null, printMeshes = [];
 const gltfLoader = new GLTFLoader();
 const modelCache = {};
 
+// Wide-leg pants and shorts: the model files have tapered legs, so they are reshaped when loaded. Each leg is
+// made as wide at the hem as at the thigh (straight and wide), plus a little extra toward the hem; girls' fit
+// gets more. Joggers keep their taper and cuffs; girls' joggers are just roomier.
+const LEG_EXTRA = { sweatpants: [0.12, 0.3], shorts: [0.08, 0.25] };   // [boys, girls]
+function shapeLegs(root, product, fit) {
+  const extra = LEG_EXTRA[product]?.[fit === 'women' ? 1 : 0];
+  const roomy = product === 'joggers' && fit === 'women' ? 1.1 : 1;
+  if (extra == null && roomy === 1) return;
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root), H = box.max.y - box.min.y;
+  const cx = (box.min.x + box.max.x) / 2, cz = (box.min.z + box.max.z) / 2, crotch = box.max.y - H * 0.34;
+  const N = 24, bin = y => Math.max(0, Math.min(N - 1, Math.floor((crotch - y) / (crotch - box.min.y) * N)));
+  const v = new THREE.Vector3(), inv = new THREE.Matrix4(), meshes = [];
+  root.traverse(o => { if (o.isMesh) meshes.push(o); });
+  const each = fn => { for (const o of meshes) { const pos = o.geometry.attributes.position; for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); if (v.y < crotch) fn(v, v.x < cx ? 0 : 1); } } };
+  // Per height band and leg: the leg's center and its half-width.
+  const sum = [new Float64Array(N), new Float64Array(N)], cnt = [new Float64Array(N), new Float64Array(N)], half = [new Float64Array(N), new Float64Array(N)];
+  each((p, s) => { const b = bin(p.y); sum[s][b] += p.x; cnt[s][b]++; });
+  const ctr = [0, 1].map(s => Array.from({ length: N }, (_, b) => (cnt[s][b] ? sum[s][b] / cnt[s][b] : NaN)));
+  each((p, s) => { const b = bin(p.y); half[s][b] = Math.max(half[s][b], Math.abs(p.x - ctr[s][b])); });
+  const scale = [0, 1].map(s => {
+    const top = half[s][0] || half[s][1];
+    return Array.from({ length: N }, (_, b) => {
+      const t = b / (N - 1);
+      if (extra == null) return roomy;
+      return half[s][b] ? Math.max(1, top * (1 + extra * t) / half[s][b]) : 1;
+    });
+  });
+  for (const o of meshes) {
+    o.geometry = o.geometry.clone();                 // the loaded file is shared; reshape a copy
+    const pos = o.geometry.attributes.position;
+    inv.copy(o.matrixWorld).invert();
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+      if (v.y < crotch) {
+        const s = v.x < cx ? 0 : 1, b = bin(v.y), c = Number.isNaN(ctr[s][b]) ? cx : ctr[s][b];
+        // Ease in over the first bands so the crotch stays as it is.
+        const k = 1 + (scale[s][b] - 1) * Math.min(1, b / 3);
+        v.x = c + (v.x - c) * k; v.z = cz + (v.z - cz) * k;
+      }
+      v.applyMatrix4(inv);
+      pos.setXYZ(i, v.x, v.y, v.z);
+    }
+    pos.needsUpdate = true;
+    o.geometry.computeBoundingBox(); o.geometry.computeBoundingSphere();
+  }
+}
 // A fresh copy of a loaded model with our fabric materials; print meshes show printTex.
-function dressModel(gltf, product, printTex, zoneTexs = {}) {
+function dressModel(gltf, product, printTex, zoneTexs = {}, fit = state.fit) {
   const root = gltf.scene.clone(true), prints = [];
   root.traverse(o => {
     if (!o.isMesh) return;
@@ -764,7 +840,10 @@ function dressModel(gltf, product, printTex, zoneTexs = {}) {
     root.scale.setScalar(1 / 0.27);
     // The pants files are drawn about 1.5× too long (joggers 151 cm waist to ankle, real ones ~100 cm) and a little
     // wide, which made them tower over the tops in an outfit. Bring them to real proportions.
-    if (styleOf(product).kind === 'pants') root.scale.multiply(new THREE.Vector3(0.9, 0.68, 0.9));
+    if (styleOf(product).kind === 'pants') {
+      root.scale.multiply(new THREE.Vector3(0.9, 0.68, 0.9));
+      shapeLegs(root, product, fit);
+    }
   }
   else {
     const s = new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3());
@@ -793,17 +872,17 @@ function tintModel(root, color, rib = null) {
 const companion = { obj: null, key: '', place: '', product: '', tex: null };
 function companionSpec() {
   if (state.couple) return { product: state.product, color: state.couple.other.color, tex: state.couple.other.tex, zones: state.couple.other.zones, rib: state.couple.other.rib, place: 'beside' };
-  if (state.set) return { product: state.set.product, color: state.set.color, tex: null, place: styleOf(state.product).kind === 'pants' ? 'above' : 'below' };
+  if (state.set) return { product: state.set.product, color: state.set.color, tex: null, fit: state.fit, place: styleOf(state.product).kind === 'pants' ? 'above' : 'below' };
   return null;
 }
 async function updateCompanion() {
   const spec = companionSpec();
-  const key = spec ? [spec.product, spec.color, spec.rib || '', spec.place, spec.tex?.dataset.v || ''].join('|') : '';
+  const key = spec ? [spec.product, spec.color, spec.rib || '', spec.fit || '', spec.place, spec.tex?.dataset.v || ''].join('|') : '';
   if (key === companion.key) return layoutScene();
   companion.key = key;
   // Same garment in the same place (switching between his and hers, a new color): repaint it in place, so
   // nothing disappears or jumps while a model reloads.
-  if (spec && companion.obj && companion.product === spec.product && companion.place === spec.place) {
+  if (spec && companion.obj && companion.product === spec.product && companion.place === spec.place && companion.fit === spec.fit) {
     companion.tex.image = companionCanvas(spec);
     companion.tex.needsUpdate = true;
     for (const [z, t] of Object.entries(companion.zoneTex || {})) if (spec.zones?.[z]) { t.image = spec.zones[z]; t.needsUpdate = true; }
@@ -815,7 +894,7 @@ async function updateCompanion() {
     try {
       const { holder, tex, zoneTex: zt } = await buildCompanion(spec);
       if (companion.key !== key) return;            // changed again while the model loaded
-      Object.assign(companion, { obj: holder, tex, zoneTex: zt, product: spec.product, place: spec.place });
+      Object.assign(companion, { obj: holder, tex, zoneTex: zt, product: spec.product, place: spec.place, fit: spec.fit });
       scene.add(holder);
     } catch (e) { console.warn(e); }
   }
@@ -834,7 +913,7 @@ async function buildCompanion(spec) {
   const url = SHOP.models[spec.product];
   const gltf = await (modelCache[url] = modelCache[url] || gltfLoader.loadAsync(url));
   const zt = Object.fromEntries(Object.entries(spec.zones || {}).map(([z, c]) => [z, zoneTexture(c, z)]));
-  const { root } = dressModel(gltf, spec.product, tex, zt);
+  const { root } = dressModel(gltf, spec.product, tex, zt, spec.fit || state.fit);
   tintModel(root, spec.color, spec.rib);
   const holder = new THREE.Group();
   holder.add(root);
@@ -1163,6 +1242,8 @@ $('#monoAdd').onclick = async () => {
   const color = isLight(state.color) ? '#111111' : '#ffffff';
   const k = 1.6, size = ar ? 60 : 50;                   // k scales the logo's 64-unit-high drawing
   const text = new fabric.Text(ar ? letters : letters.toUpperCase(), { fontFamily: font, fontWeight: ar ? 'normal' : 800, fontSize: size, fill: color });
+  // Plain letters unless the customer asks for them inside the CMG "C".
+  if (!$('#monoInC').checked) return placeNew(text, 0.45);
   const first = new fabric.Text([...text.text][0], { fontFamily: font, fontWeight: text.fontWeight, fontSize: size });
   // Place by the drawn letters, not the font's box: fonts sit their letters at different heights.
   const ink = inkBox(text), inkFirst = inkBox(first);
@@ -1272,7 +1353,7 @@ function capturePiece() {
     return [z, c];
   }));
   return {
-    color: state.color, rib: state.rib, qty: { ...state.qty }, tex, zones,
+    color: state.color, rib: state.rib, qty: { ...state.qty }, custom: state.custom && structuredClone(state.custom), tex, zones,
     json: Object.fromEntries(ZONES.map(z => [z, editors[z].toJSON(['cutout'])])),
   };
 }
@@ -1280,6 +1361,7 @@ async function loadPiece(p) {
   for (const s of ZONES) await new Promise(ok => editors[s].loadFromJSON(p.json[s] || emptySide(), () => { editors[s].renderAll(); ok(); }));
   state.qty = { ...p.qty };
   state.rib = p.rib || null;
+  state.custom = p.custom || null;
   renderRib();
   syncSizeInputs();
   setColor(p.color);
@@ -1503,6 +1585,19 @@ function renderProducts() {
   }
   $('#currentProduct').textContent = T('product.' + state.product);
 }
+// Boys / girls: only pants differ (girls' legs are wider), so the choice shows when pants are involved.
+const pantsInvolved = () => styleOf(state.product).kind === 'pants' || (state.set && styleOf(state.set.product).kind === 'pants');
+function renderFit() {
+  $('#fitRow').hidden = !pantsInvolved();
+  $$('#fitSeg button').forEach(b => b.classList.toggle('on', b.dataset.fit === state.fit));
+}
+$$('#fitSeg button').forEach(b => b.onclick = () => {
+  if (state.fit === b.dataset.fit) return;
+  state.fit = b.dataset.fit;
+  renderFit(); renderChart(); updateSummary();
+  companion.key = '';                                // pants reshape: rebuild the second piece too
+  loadProductModel();
+});
 function setProduct(p) {
   state.product = p;
   category = styleOf(p).category;
@@ -1511,6 +1606,8 @@ function setProduct(p) {
   renderProducts();
   renderSides();
   renderSet();
+  renderFit();
+  renderChart();
   loadProductModel();
 }
 COLORS.forEach(([name, hex]) => {
@@ -1559,6 +1656,7 @@ function outfitSvg(top, bottom, shorts) {
     + `<path d="M14 10 L24 5 Q30 10 36 5 L46 10 L57 32 L48 36 L46 28 V48 H14 V28 L12 36 L3 32Z" fill="${top}"${edge(top)}/></svg>`;
 }
 function renderSet() {
+  renderFit();
   $('#setSec').hidden = !!state.couple;   // a set is for one person; couples pick two pieces instead
   const kind = styleOf(state.product).kind === 'pants' ? 'pants' : 'top';
   const partners = SET_PARTNERS[kind];
@@ -1653,13 +1751,77 @@ function applyStrings() {
 SIZES.forEach(s => {
   const l = document.createElement('label');
   l.innerHTML = `${s}<input type="number" min="0" max="999" value="${state.qty[s]}">`;
-  l.querySelector('input').oninput = e => { state.qty[s] = Math.max(0, parseInt(e.target.value) || 0); updateSummary(); };
+  l.querySelector('input').oninput = e => { state.qty[s] = Math.max(0, parseInt(e.target.value) || 0); updateSummary(); renderChart(); };
   $('#sizes').append(l);
 });
-function syncSizeInputs() { $$('#sizes input').forEach((inp, i) => { inp.value = state.qty[SIZES[i]]; }); }
+function syncSizeInputs() { $$('#sizes input').forEach((inp, i) => { inp.value = state.qty[SIZES[i]]; }); renderChart(); }
+
+// Standard measurements in cm (garment laid flat; length from the shoulder or waistband).
+const CHART = {
+  top: { cols: ['chest', 'length', 'sleeve'], S: [52, 68, 61], M: [55, 70, 62], L: [58, 72, 63], XL: [61, 74, 64], '2XL': [64, 76, 65] },
+  pants: {
+    cols: ['waist', 'hip', 'length', 'opening'],
+    men: { S: [34, 50, 98, 28], M: [36, 52, 100, 29], L: [38, 54, 102, 30], XL: [40, 56, 104, 31], '2XL': [42, 58, 106, 32] },
+    women: { S: [32, 52, 96, 31], M: [34, 54, 98, 32], L: [36, 56, 100, 33], XL: [38, 58, 102, 34], '2XL': [40, 60, 104, 35] },
+  },
+};
+function chartFor(product) {
+  const st = styleOf(product);
+  if (st.kind === 'pants') {
+    const base = CHART.pants[state.fit];
+    const rows = Object.fromEntries(SIZES.map(s => {
+      let [w, h, l, o] = base[s];
+      if (product === 'joggers') o = state.fit === 'women' ? 15 : 13;   // elastic cuff
+      if (product === 'shorts') { l = l - 48; o = o + 3; }
+      return [s, [w, h, l, o]];
+    }));
+    return { cols: CHART.pants.cols, rows };
+  }
+  const big = st.width > 1.05, crop = product === 'hoodie_cropped';
+  const rows = Object.fromEntries(SIZES.map(s => {
+    const [c, l, sl] = CHART.top[s];
+    return [s, [c + (big ? 6 : 0), l + (big ? 2 : 0) - (crop ? 14 : 0), sl + (big ? 2 : 0)]];
+  }));
+  return { cols: CHART.top.cols, rows };
+}
+const inUnit = cm => (state.unit === 'in' ? Math.round(cm / 2.54 * 2) / 2 : cm);
+function renderChart() {
+  const { cols, rows } = chartFor(state.product);
+  $('#sizeChart').innerHTML = `<tr><th>${T('chart.size')}</th>${cols.map(c => `<th>${T('chart.' + c)}</th>`).join('')}</tr>`
+    + SIZES.map(s => `<tr class="${state.qty[s] ? 'on' : ''}"><td>${s}</td>${rows[s].map(v => `<td>${i18n.num(inUnit(v))}</td>`).join('')}</tr>`).join('');
+  $$('#unitSeg button').forEach(b => b.classList.toggle('on', b.dataset.u === state.unit));
+  // Custom size: the same measurements, typed by the customer in their unit.
+  $('#customBox').hidden = !state.custom;
+  $('#customToggle').textContent = T(state.custom ? 'custom.remove' : 'custom.add');
+  if (state.custom) {
+    const keep = state.custom.values;
+    $('#customFields').innerHTML = cols.map(c => `<label>${T('chart.' + c)} (${T('unit.' + state.unit)})<input type="number" min="0" step="0.5" data-c="${c}" value="${keep[c] ?? ''}"></label>`).join('');
+    $$('#customFields input').forEach(inp => inp.oninput = () => { state.custom.values[inp.dataset.c] = inp.value; state.custom.unit = state.unit; });
+    $('#customQty').value = state.custom.qty;
+  }
+}
+$$('#unitSeg button').forEach(b => b.onclick = () => {
+  if (state.custom && state.unit !== b.dataset.u) {   // convert what was typed
+    const f = b.dataset.u === 'in' ? 1 / 2.54 : 2.54;
+    for (const [k, v] of Object.entries(state.custom.values)) if (v !== '') state.custom.values[k] = String(Math.round(v * f * 2) / 2);
+    state.custom.unit = b.dataset.u;
+  }
+  state.unit = b.dataset.u; renderChart();
+});
+$('#customToggle').onclick = () => {
+  state.custom = state.custom ? null : { qty: 1, unit: state.unit, values: {} };
+  renderChart(); updateSummary();
+};
+$('#customQty').oninput = e => { if (state.custom) { state.custom.qty = Math.max(0, parseInt(e.target.value) || 0); updateSummary(); } };
+// "Custom size ×1: chest 60 cm, length 75 cm"
+function customLabel(c = state.custom) {
+  if (!c || !c.qty) return '';
+  const parts = Object.entries(c.values).filter(([, v]) => v !== '' && v != null).map(([k, v]) => `${T('chart.' + k)} ${v} ${T('unit.' + c.unit)}`);
+  return `${T('custom.name')}×${c.qty}${parts.length ? ': ' + parts.join('، ') : ''}`;
+}
 function quote() {
   const sides = zonesFor(state.product).filter(s => ready ? ready[s] : editors[s].getObjects().length);
-  const pcs = Object.values(state.qty).reduce((a, b) => a + b, 0);
+  const pcs = Object.values(state.qty).reduce((a, b) => a + b, 0) + (state.custom?.qty || 0);
   const unit = PRODUCTS[state.product].price + sides.reduce((a, s) => a + SHOP.printPrices[s], 0);
   // The matching piece comes plain, in the same sizes and quantities.
   const setUnit = state.set ? PRODUCTS[state.set.product].price : 0;
@@ -1669,7 +1831,7 @@ function quote() {
   if (state.couple) {
     const o = state.couple.other;
     const oSides = zonesFor(state.product).filter(s => o.json[s]?.objects.length);
-    const oPcs = Object.values(o.qty).reduce((a, b) => a + b, 0);
+    const oPcs = Object.values(o.qty).reduce((a, b) => a + b, 0) + (o.custom?.qty || 0);
     const oUnit = PRODUCTS[state.product].price + oSides.reduce((a, s) => a + SHOP.printPrices[s], 0);
     other = { sides: oSides, pcs: oPcs, unit: oUnit, xxl: o.qty['2XL'] * SHOP.xxlSurcharge, sub: oUnit * oPcs + o.qty['2XL'] * SHOP.xxlSurcharge };
   }
@@ -1809,12 +1971,13 @@ function orderMessage(order, attached) {
     `${T('msg.color')}: ${colorLabel()}`,
     hasStrings() && `${T('msg.strings')}: ${stringLabel()}`,
     state.rib && `${T('msg.rib')}: ${ribLabel()}`,
-    `${T('msg.sizes')}: ${sizes}`,
+    `${T('msg.sizes')}: ${[sizes, customLabel()].filter(Boolean).join('، ')}`,
+    pantsInvolved() && `${T('msg.fit')}: ${T('fit.' + state.fit)}`,
     `${T('msg.print')}: ${sidesLabel(q.sides)}`,
     pt && `— ${pt.label} —`,
     pt && `${T('msg.color')}: ${colorName(pt.color)} (\u200e${pt.color})`,
     pt?.rib && `${T('msg.rib')}: ${colorName(pt.rib)} (\u200e${pt.rib})`,
-    pt && `${T('msg.sizes')}: ${sz(pt.qty)}`,
+    pt && `${T('msg.sizes')}: ${[sz(pt.qty), customLabel(pt.custom)].filter(Boolean).join('، ')}`,
     pt && `${T('msg.print')}: ${sidesLabel(pt.sides)}`,
     pt && '—',
     state.set && `${T('msg.set')}: ${setLabel()} (‎${state.set.color}) ${T('msg.setPlain')}`,
@@ -1857,6 +2020,8 @@ async function orderSheet(order) {
   const rows = [
     [T('msg.product'), T('product.' + state.product)], [mine('msg.color'), colorLabel()],
     ...(hasStrings() ? [[T('msg.strings'), stringLabel()]] : []), ...(state.rib ? [[mine('msg.rib'), ribLabel()]] : []), [mine('msg.sizes'), sizes],
+    ...(state.custom?.qty ? [[T('custom.name'), customLabel().replace(/^[^:]*:\s*/, '')]] : []),
+    ...(pantsInvolved() ? [[T('msg.fit'), T('fit.' + state.fit)]] : []),
     [mine('msg.print'), sidesLabel(q.sides)],
     ...(pt ? [[`${pt.label}: ${T('msg.color')}`, `${colorName(pt.color)} (\u200e${pt.color})`],
       [`${pt.label}: ${T('msg.sizes')}`, SIZES.filter(s => pt.qty[s]).map(s => `${s}×${pt.qty[s]}`).join('   ')],
@@ -1923,7 +2088,9 @@ function orderData(order) {
   const q = order.quote;
   return {
     code: order.code, date: Date.now(), product: T('product.' + state.product), color: colorLabel(), colorHex: state.color,
-    strings: hasStrings() ? stringLabel() : null, rib: state.rib && ribLabel(), qty: Object.fromEntries(SIZES.filter(s => state.qty[s]).map(s => [s, state.qty[s]])),
+    strings: hasStrings() ? stringLabel() : null, rib: state.rib && ribLabel(), fit: pantsInvolved() ? T('fit.' + state.fit) : null,
+    custom: state.custom?.qty ? customLabel() : null,
+    qty: Object.fromEntries([...SIZES.filter(s => state.qty[s]).map(s => [s, state.qty[s]]), ...(state.custom?.qty ? [[T('custom.name'), state.custom.qty]] : [])]),
     sides: [
       ...q.sides.filter(s => order.prints[s]).map(s => ({ side: s, label: order.partner ? `${order.mainLabel} – ${T('side.' + s)}` : T('side.' + s) })),
       ...(order.partner?.sides || []).map(s => ({ side: s, label: `${order.partner.label} – ${T('side.' + s)}` })),
@@ -1945,7 +2112,7 @@ async function partnerOrder(q) {
     prints[s] = { url: printFile(s, c), mm: printRect(s, c).mm };
     c.dispose();
   }
-  return { label: pieceName(1 - state.couple.active), color: o.color, rib: o.rib, qty: o.qty, sides: q.other.sides, pcs: q.other.pcs, unit: q.other.unit, prints };
+  return { label: pieceName(1 - state.couple.active), color: o.color, rib: o.rib, qty: o.qty, custom: o.custom, sides: q.other.sides, pcs: q.other.pcs, unit: q.other.unit, prints };
 }
 function toPng(img) {
   const c = Object.assign(document.createElement('canvas'), { width: img.naturalWidth, height: img.naturalHeight });
@@ -2059,6 +2226,8 @@ i18n.onChange(() => {
   renderSet();
   renderCouple();
   renderRib();
+  renderFit();
+  renderChart();
   renderLogos();
   labelSwatches();
   updateSummary();
@@ -2072,6 +2241,8 @@ i18n.onChange(() => {
   labelSwatches();
   renderProducts();
   renderSides();
+  renderFit();
+  renderChart();
   renderCouple();
   renderRib();
   loadLogos();
