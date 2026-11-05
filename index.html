@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="brand/mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cairo:wght@400;600;700;900&family=Tajawal:wght@500;800&family=Lalezar&family=Reem+Kufi:wght@700&family=Amiri:wght@700&family=Bebas+Neue&family=Oswald:wght@600&family=Pacifico&family=Playfair+Display:wght@700&family=Permanent+Marker&family=Anton&family=Montserrat:wght@800&family=Bangers&family=Lobster&family=Dancing+Script:wght@700&family=Righteous&family=Russo+One&family=Black+Ops+One&family=Abril+Fatface&family=Bungee&family=Great+Vibes&family=Caveat:wght@700&family=Changa:wght@700&family=El+Messiri:wght@700&family=Aref+Ruqaa:wght@700&family=Rakkas&family=Marhey:wght@700&family=Lemonada:wght@700&family=Kufam:wght@700&family=Jomhuria&family=Mirza:wght@700&family=Vibes&display=swap" rel="stylesheet">
-<script src="i18n.js?v=29"></script>
+<script src="i18n.js?v=30"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <!-- Import maps need Safari 16.4+; this polyfill makes older iPhones load the 3D modules too. -->
@@ -139,7 +139,8 @@
   .toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: var(--text); color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .25s; max-width: calc(100% - 32px); text-align: center; z-index: 10; }
   .toast.show { opacity: 1; }
 
-  .ed-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .ed-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  #sideSeg { flex-wrap: wrap; }
   .ed-wrap { position: relative; border-radius: 12px; overflow: hidden; width: 100%; max-width: 440px; margin: 0 auto; }
   .ed-pane { display: none; position: relative; direction: ltr; }   /* the canvas is a picture of the garment, never mirrored */
   .ed-pane.on { display: block; }
@@ -329,11 +330,17 @@
         <div class="seg" id="sideSeg">
           <button data-s="front" class="on" data-i18n="side.front"></button>
           <button data-s="back" data-i18n="side.back"></button>
+          <button data-s="sleeveR" data-i18n="side.sleeveR"></button>
+          <button data-s="sleeveL" data-i18n="side.sleeveL"></button>
+          <button data-s="hood" data-i18n="side.hood"></button>
         </div>
       </div>
       <div class="ed-wrap" id="edWrap">
         <div class="ed-pane on" id="pane-front"><canvas id="ed-front"></canvas><div class="print-area" data-i18n-label="editor.printArea"></div></div>
         <div class="ed-pane" id="pane-back"><canvas id="ed-back"></canvas><div class="print-area" data-i18n-label="editor.printArea"></div></div>
+        <div class="ed-pane" id="pane-sleeveR"><canvas id="ed-sleeveR"></canvas><div class="print-area" data-i18n-label="editor.printArea"></div></div>
+        <div class="ed-pane" id="pane-sleeveL"><canvas id="ed-sleeveL"></canvas><div class="print-area" data-i18n-label="editor.printArea"></div></div>
+        <div class="ed-pane" id="pane-hood"><canvas id="ed-hood"></canvas><div class="print-area" data-i18n-label="editor.printArea"></div></div>
       </div>
       <div class="quick-colors sel-bar" id="quickColors" hidden>
         <div class="qc-part" id="qcColorPart">
@@ -416,8 +423,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { EW, EH, STYLES, CATEGORIES, styleOf, buildGarment, printAreas, pocketOutlines } from './garment.js?v=29';
-import SHOP from './config.js?v=29';
+import { EW, EH, STYLES, CATEGORIES, styleOf, buildGarment, printAreas, pocketOutlines } from './garment.js?v=30';
+import SHOP from './config.js?v=30';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -469,9 +476,26 @@ Object.assign(fabric.Object.prototype, {
   transparentCorners: false, cornerColor: '#ffffff', cornerStrokeColor: '#4f46e5',
   borderColor: '#4f46e5', cornerSize: 11, cornerStyle: 'circle', borderScaleFactor: 1.5,
 });
+// Print zones. Front and back are the body panels; sleeves and hood are drawn on their own and wrapped onto
+// those parts of the 3D model. Sizes are in the same units as the body (1 unit = 1.6 mm when printed):
+// a sleeve opened flat is about 58 cm around and 41 cm long, the hood about 73 cm around and 36 cm high.
+const ZONES = ['front', 'back', 'sleeveR', 'sleeveL', 'hood'];
+const EXTRA_ZONES = ['sleeveR', 'sleeveL', 'hood'];
+const ZONE_SIZE = { front: [EW, EH], back: [EW, EH], sleeveR: [366, 256], sleeveL: [366, 256], hood: [456, 226] };
+// Print areas: down the outer side of each sleeve, and the back of the hood.
+const EXTRA_AREAS = { sleeveR: { x: 138, y: 14, w: 90, h: 228 }, sleeveL: { x: 138, y: 14, w: 90, h: 228 }, hood: { x: 158, y: 40, w: 140, h: 140 } };
+const areaOf = side => PRODUCTS[state.product].areas[side] || EXTRA_AREAS[side];
+function zonesFor(product) {
+  const st = styleOf(product);
+  return ['front', 'back', ...(st.kind === 'top' ? ['sleeveR', 'sleeveL'] : []), ...(st.hood ? ['hood'] : [])];
+}
+// Camera angle that shows each zone (the wearer's right sleeve is on the viewer's left).
+const ZONE_VIEW = { front: 0, back: Math.PI, sleeveR: -Math.PI / 2, sleeveL: Math.PI / 2, hood: Math.PI };
+
 const editors = {};
-for (const side of ['front', 'back']) {
-  const c = new fabric.Canvas('ed-' + side, { width: EW, height: EH, preserveObjectStacking: true, enableRetinaScaling: false });
+for (const side of ZONES) {
+  const [w, h] = ZONE_SIZE[side];
+  const c = new fabric.Canvas('ed-' + side, { width: w, height: h, preserveObjectStacking: true, enableRetinaScaling: false });
   c.on('after:render', () => markDirty(side));
   c.on('selection:created', updateSelUI);
   c.on('selection:updated', updateSelUI);
@@ -485,17 +509,17 @@ const ed = () => editors[state.side];
 window.studio = { editors, state };   // handy for debugging in the browser console
 
 function layoutPrintAreas() {
-  for (const side of ['front', 'back']) {
-    const a = PRODUCTS[state.product].areas[side];
+  for (const side of ZONES) {
+    const a = areaOf(side), [W, H] = ZONE_SIZE[side];
     Object.assign($(`#pane-${side} .print-area`).style, {
-      left: a.x / EW * 100 + '%', top: a.y / EH * 100 + '%', width: a.w / EW * 100 + '%', height: a.h / EH * 100 + '%',
+      left: a.x / W * 100 + '%', top: a.y / H * 100 + '%', width: a.w / W * 100 + '%', height: a.h / H * 100 + '%',
     });
   }
 }
 function fitEditors() {
   const w = Math.min(EW, $('#edWrap').clientWidth || EW);
   for (const c of Object.values(editors)) {
-    c.setDimensions({ width: w + 'px', height: w * EH / EW + 'px' }, { cssOnly: true });
+    c.setDimensions({ width: w + 'px', height: w * c.getHeight() / c.getWidth() + 'px' }, { cssOnly: true });
     c.calcOffset();
   }
 }
@@ -513,8 +537,27 @@ realPrintTex.colorSpace = THREE.SRGBColorSpace;
 realPrintTex.flipY = false;
 realPrintTex.anisotropy = 8;
 
+// Sleeves and hood: one canvas each, wrapped onto that part of the model. The UV maps run differently per part
+// (measured from the model files), so each texture is turned to put the print area on the outside and read
+// the right way: both sleeves are mirrored around, the hood is upside down.
+const ZONE_UV = { sleeveR: [-1, 1, 0.5, 0], sleeveL: [-1, 1, 1, 0], hood: [1, -1, 0, 1] };   // repeat x, y, offset x, y
+const ZONE_MESH = { Sleeve_L_fabric: 'sleeveR', Sleeve_R_fabric: 'sleeveL', Hood: 'hood' };
+function zoneTexture(canvas, zone) {
+  const t = new THREE.CanvasTexture(canvas);
+  const [rx, ry, ox, oy] = ZONE_UV[zone];
+  t.colorSpace = THREE.SRGBColorSpace; t.flipY = false; t.anisotropy = 8;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(rx, ry); t.offset.set(ox, oy);
+  return t;
+}
+const zoneCanvas = Object.fromEntries(EXTRA_ZONES.map(z => {
+  const [w, h] = ZONE_SIZE[z];
+  return [z, Object.assign(document.createElement('canvas'), { width: 1024, height: Math.round(1024 * h / w) })];
+}));
+const zoneTex = Object.fromEntries(EXTRA_ZONES.map(z => [z, zoneTexture(zoneCanvas[z], z)]));
+
 let composing = false, raf = 0;
-const dirty = new Set(['front', 'back']);
+const dirty = new Set(ZONES);
 const sideCache = {};
 function markDirty(side) {
   if (composing || pieceBusy) return;  // toCanvasElement re-fires after:render; a piece switch redraws at the end
@@ -524,7 +567,7 @@ function markDirty(side) {
 function compose() {
   raf = 0;
   composing = true;
-  for (const s of dirty) sideCache[s] = editors[s].toCanvasElement(1024 / EW);
+  for (const s of dirty) sideCache[s] = editors[s].toCanvasElement(1024 / ZONE_SIZE[s][0]);
   dirty.clear();
   composing = false;
 
@@ -535,6 +578,13 @@ function compose() {
   ['front', 'back'].forEach((s, i) => sideCache[s] && tctx.drawImage(sideCache[s], i * 1024, 0, 1024, 1024));
   designTex.needsUpdate = true;
   realPrintTex.needsUpdate = true;
+  const zones = zonesFor(state.product);
+  for (const z of EXTRA_ZONES) {
+    const c = zoneCanvas[z], g = c.getContext('2d');
+    g.fillStyle = state.color; g.fillRect(0, 0, c.width, c.height);
+    if (sideCache[z] && zones.includes(z)) g.drawImage(sideCache[z], 0, 0, c.width, c.height);
+    zoneTex[z].needsUpdate = true;
+  }
 }
 function isLight(hex) {
   const n = parseInt(hex.slice(1), 16);
@@ -675,7 +725,7 @@ const gltfLoader = new GLTFLoader();
 const modelCache = {};
 
 // A fresh copy of a loaded model with our fabric materials; print meshes show printTex.
-function dressModel(gltf, product, printTex) {
+function dressModel(gltf, product, printTex, zoneTexs = {}) {
   const root = gltf.scene.clone(true), prints = [];
   root.traverse(o => {
     if (!o.isMesh) return;
@@ -695,7 +745,10 @@ function dressModel(gltf, product, printTex) {
       bumpMap: src?.normalMap ? null : (isRib ? rib : knit), bumpScale: isRib ? 1.4 : 0.6,
       roughness: src?.roughness ?? 0.92, sheen: 1, sheenRoughness: 0.6, side: isLining ? THREE.BackSide : THREE.DoubleSide,
     });
-    if (isPrint) { m.map = printTex; prints.push(o); } else m.userData.tint = isRib ? 0.88 : isLining ? 0.62 : 1;
+    const zone = zoneTexs[ZONE_MESH[o.name]];
+    if (isPrint) { m.map = printTex; prints.push(o); }
+    else if (zone) m.map = zone;                   // sleeve or hood print, on the garment color
+    else m.userData.tint = isRib ? 0.88 : isLining ? 0.62 : 1;
     o.material = m;
   });
   if (!prints.length) throw new Error('no mesh named "print"');
@@ -726,7 +779,7 @@ function tintModel(root, color) {
 // partner's piece stands beside it with its own color and design.
 const companion = { obj: null, key: '', place: '', product: '', tex: null };
 function companionSpec() {
-  if (state.couple) return { product: state.product, color: state.couple.other.color, tex: state.couple.other.tex, place: 'beside' };
+  if (state.couple) return { product: state.product, color: state.couple.other.color, tex: state.couple.other.tex, zones: state.couple.other.zones, place: 'beside' };
   if (state.set) return { product: state.set.product, color: state.set.color, tex: null, place: styleOf(state.product).kind === 'pants' ? 'above' : 'below' };
   return null;
 }
@@ -740,15 +793,16 @@ async function updateCompanion() {
   if (spec && companion.obj && companion.product === spec.product && companion.place === spec.place) {
     companion.tex.image = companionCanvas(spec);
     companion.tex.needsUpdate = true;
+    for (const [z, t] of Object.entries(companion.zoneTex || {})) if (spec.zones?.[z]) { t.image = spec.zones[z]; t.needsUpdate = true; }
     tintModel(companion.obj, spec.color);
     return layoutScene();
   }
   if (companion.obj) { scene.remove(companion.obj); companion.obj = null; }
   if (spec) {
     try {
-      const { holder, tex } = await buildCompanion(spec);
+      const { holder, tex, zoneTex: zt } = await buildCompanion(spec);
       if (companion.key !== key) return;            // changed again while the model loaded
-      Object.assign(companion, { obj: holder, tex, product: spec.product, place: spec.place });
+      Object.assign(companion, { obj: holder, tex, zoneTex: zt, product: spec.product, place: spec.place });
       scene.add(holder);
     } catch (e) { console.warn(e); }
   }
@@ -766,11 +820,12 @@ async function buildCompanion(spec) {
   tex.colorSpace = THREE.SRGBColorSpace; tex.flipY = false; tex.anisotropy = 8;
   const url = SHOP.models[spec.product];
   const gltf = await (modelCache[url] = modelCache[url] || gltfLoader.loadAsync(url));
-  const { root } = dressModel(gltf, spec.product, tex);
+  const zt = Object.fromEntries(Object.entries(spec.zones || {}).map(([z, c]) => [z, zoneTexture(c, z)]));
+  const { root } = dressModel(gltf, spec.product, tex, zt);
   tintModel(root, spec.color);
   const holder = new THREE.Group();
   holder.add(root);
-  return { holder, tex };
+  return { holder, tex, zoneTex: zt };
 }
 // Places the second piece against the main one and frames them both.
 function layoutScene() {
@@ -807,7 +862,7 @@ async function loadProductModel() {
     try {
       const gltf = await (modelCache[url] = modelCache[url] || gltfLoader.loadAsync(url));
       if (state.product !== product) return;      // user switched product while loading
-      const { root, prints } = dressModel(gltf, product, realPrintTex);
+      const { root, prints } = dressModel(gltf, product, realPrintTex, zoneTex);
       realModel = root; printMeshes = prints;
       garment.visible = false;
       scene.add(root);
@@ -912,6 +967,12 @@ canvas3d.addEventListener('pointerup', e => {
 canvas3d.addEventListener('pointermove', e => { canvas3d.style.cursor = hitGarment(e) ? 'crosshair' : 'grab'; });
 
 // ---------- Editor actions ----------
+// Only the zones this product has: no hood on a sweatshirt, no sleeves on pants.
+function renderSides() {
+  const zones = zonesFor(state.product);
+  $$('#sideSeg button').forEach(b => { b.hidden = !zones.includes(b.dataset.s); });
+  if (!zones.includes(state.side)) setSide('front');
+}
 function setSide(side) {
   if (state.side === side) return;
   editors[state.side].discardActiveObject().requestRenderAll();
@@ -922,12 +983,16 @@ function setSide(side) {
   updateSelUI();
   checkBounds();
 }
-$$('#sideSeg button').forEach(b => b.onclick = () => { setSide(b.dataset.s); goToView(b.dataset.s === 'front' ? 0 : Math.PI); });
+$$('#sideSeg button').forEach(b => b.onclick = () => { setSide(b.dataset.s); goToView(ZONE_VIEW[b.dataset.s]); });
 
 function placeNew(obj, widthFrac = 0.7) {
   if (paint.on) setPaint(false);
-  const a = PRODUCTS[state.product].areas[state.side];
-  const s = Math.min(a.w * widthFrac / obj.width, a.h * 0.8 / obj.height);
+  const a = areaOf(state.side);
+  // Text on a sleeve runs down the arm.
+  const turn = state.side.startsWith('sleeve') && /text/.test(obj.type);
+  if (turn) obj.set({ angle: 90 });
+  const [bw, bh] = turn ? [obj.height, obj.width] : [obj.width, obj.height];
+  const s = Math.min(a.w * widthFrac / bw, a.h * 0.8 / bh);
   obj.set({ scaleX: s, scaleY: s });
   obj.setPositionByOrigin(new fabric.Point(a.x + a.w / 2, a.y + a.h / 2), 'center', 'center');
   ed().add(obj).setActiveObject(obj).requestRenderAll();
@@ -1149,6 +1214,13 @@ const PAIRS = Object.fromEntries([
 const emptySide = () => ({ version: fabric.version, objects: [] });
 const blankQty = () => ({ S: 0, M: 1, L: 0, XL: 0, '2XL': 0 });
 let coupleOffered = false;
+function plainZones(color) {
+  return Object.fromEntries(EXTRA_ZONES.map(z => {
+    const c = Object.assign(document.createElement('canvas'), { width: zoneCanvas[z].width, height: zoneCanvas[z].height });
+    const g = c.getContext('2d'); g.fillStyle = color; g.fillRect(0, 0, c.width, c.height);
+    return [z, c];
+  }));
+}
 function plainTex(color) {
   const c = Object.assign(document.createElement('canvas'), { width: 1024, height: 512 });
   const g = c.getContext('2d'); g.fillStyle = color; g.fillRect(0, 0, 1024, 512);
@@ -1158,25 +1230,30 @@ function plainTex(color) {
 function capturePiece() {
   // Draw the editors now (Fabric otherwise waits for the next frame), so the snapshot has the latest design.
   for (const c of Object.values(editors)) c.discardActiveObject().renderAll();
-  dirty.add('front'); dirty.add('back');
+  ZONES.forEach(z => dirty.add(z));
   compose();
   const tex = Object.assign(document.createElement('canvas'), { width: 1024, height: 512 });
   tex.getContext('2d').drawImage(texCanvas, 0, 0, 1024, 512);
   tex.dataset.v = Date.now() + Math.random();
+  const zones = Object.fromEntries(EXTRA_ZONES.map(z => {
+    const c = Object.assign(document.createElement('canvas'), { width: zoneCanvas[z].width, height: zoneCanvas[z].height });
+    c.getContext('2d').drawImage(zoneCanvas[z], 0, 0);
+    return [z, c];
+  }));
   return {
-    color: state.color, qty: { ...state.qty }, tex,
-    json: { front: editors.front.toJSON(['cutout']), back: editors.back.toJSON(['cutout']) },
+    color: state.color, qty: { ...state.qty }, tex, zones,
+    json: Object.fromEntries(ZONES.map(z => [z, editors[z].toJSON(['cutout'])])),
   };
 }
 async function loadPiece(p) {
-  for (const s of ['front', 'back']) await new Promise(ok => editors[s].loadFromJSON(p.json[s], () => { editors[s].renderAll(); ok(); }));
+  for (const s of ZONES) await new Promise(ok => editors[s].loadFromJSON(p.json[s] || emptySide(), () => { editors[s].renderAll(); ok(); }));
   state.qty = { ...p.qty };
   syncSizeInputs();
   setColor(p.color);
 }
 function enableCouple() {
   state.set = null;
-  state.couple = { active: 0, other: { color: state.color, qty: blankQty(), json: { front: emptySide(), back: emptySide() }, tex: plainTex(state.color) } };
+  state.couple = { active: 0, other: { color: state.color, qty: blankQty(), json: Object.fromEntries(ZONES.map(z => [z, emptySide()])), tex: plainTex(state.color), zones: plainZones(state.color) } };
   renderCouple(); renderSet(); updateSummary(); updateCompanion();
 }
 function disableCouple() {
@@ -1259,7 +1336,7 @@ $('#selFont').onchange = async e => {
   textFont = e.target.value; $$('#fontGrid button').forEach(b => b.classList.toggle('on', b.dataset.font === textFont));
 };
 $('#btnCenter').onclick = () => {
-  const o = ed().getActiveObject(), a = PRODUCTS[state.product].areas[state.side];
+  const o = ed().getActiveObject(), a = areaOf(state.side);
   o.setPositionByOrigin(new fabric.Point(a.x + a.w / 2, o.getCenterPoint().y), 'center', 'center');
   o.setCoords(); ed().requestRenderAll(); checkBounds();
 };
@@ -1296,7 +1373,7 @@ document.addEventListener('keydown', e => {
 });
 
 function checkBounds() {
-  const a = PRODUCTS[state.product].areas[state.side];
+  const a = areaOf(state.side);
   const out = ed().getObjects().some(o => {
     const r = o.getBoundingRect(true, true);
     return r.left < a.x - 1 || r.top < a.y - 1 || r.left + r.width > a.x + a.w + 1 || r.top + r.height > a.y + a.h + 1;
@@ -1351,7 +1428,7 @@ $('#mirror').onchange = e => $('#edWrap').classList.toggle('mirror', e.target.ch
 for (const [side, c] of Object.entries(editors)) {
   c.on('path:created', ({ path }) => {
     if (!$('#mirror').checked) return;
-    const a = PRODUCTS[state.product].areas[side], cx = a.x + a.w / 2;
+    const a = areaOf(side), cx = a.x + a.w / 2;
     path.clone(m => {
       const ctr = path.getCenterPoint();
       m.set({ flipX: !path.flipX });
@@ -1399,6 +1476,7 @@ function setProduct(p) {
   // A matching piece only makes sense on the other half of the outfit.
   if (state.set && styleOf(state.set.product).kind === styleOf(p).kind) state.set = null;
   renderProducts();
+  renderSides();
   renderSet();
   loadProductModel();
 }
@@ -1523,7 +1601,7 @@ SIZES.forEach(s => {
 });
 function syncSizeInputs() { $$('#sizes input').forEach((inp, i) => { inp.value = state.qty[SIZES[i]]; }); }
 function quote() {
-  const sides = ['front', 'back'].filter(s => ready ? ready[s] : editors[s].getObjects().length);
+  const sides = zonesFor(state.product).filter(s => ready ? ready[s] : editors[s].getObjects().length);
   const pcs = Object.values(state.qty).reduce((a, b) => a + b, 0);
   const unit = PRODUCTS[state.product].price + sides.reduce((a, s) => a + SHOP.printPrices[s], 0);
   // The matching piece comes plain, in the same sizes and quantities.
@@ -1533,7 +1611,7 @@ function quote() {
   let other = null;
   if (state.couple) {
     const o = state.couple.other;
-    const oSides = ['front', 'back'].filter(s => o.json[s].objects.length);
+    const oSides = zonesFor(state.product).filter(s => o.json[s]?.objects.length);
     const oPcs = Object.values(o.qty).reduce((a, b) => a + b, 0);
     const oUnit = PRODUCTS[state.product].price + oSides.reduce((a, s) => a + SHOP.printPrices[s], 0);
     other = { sides: oSides, pcs: oPcs, unit: oUnit, xxl: o.qty['2XL'] * SHOP.xxlSurcharge, sub: oUnit * oPcs + o.qty['2XL'] * SHOP.xxlSurcharge };
@@ -1544,7 +1622,9 @@ function quote() {
   const discount = subtotal * discRate;
   return { sides, pcs, allPcs, unit, setUnit, setSub, other, subtotal, discRate, discount, total: subtotal - discount };
 }
-const sidesLabel = sides => T('sides.' + (sides.length === 2 ? 'both' : sides[0] || 'none'));
+const sidesLabel = sides => (sides.every(s => s === 'front' || s === 'back')
+  ? T('sides.' + (sides.length === 2 ? 'both' : sides[0] || 'none'))
+  : T('sides.list', { list: sides.map(s => T('side.' + s)).join(' + ') }));
 // Every part of the price on its own line: the piece (before/after the launch offer), each print side, the
 // price per piece, pieces, extras and discounts; the total shows the full price crossed out next to what they pay.
 function summaryHTML(q) {
@@ -1585,14 +1665,14 @@ function updateSummary() {
 // High-resolution print file of one side: transparent PNG at real size, 300 DPI.
 // It covers the print area plus anything placed past its edges, so nothing the customer sees gets cut off.
 function printRect(side, c = editors[side]) {
-  const a = PRODUCTS[state.product].areas[side];
+  const a = areaOf(side), [W, H] = ZONE_SIZE[side];
   let [x0, y0, x1, y1] = [a.x, a.y, a.x + a.w, a.y + a.h];
   for (const o of c.getObjects()) {
     // A small margin: tall calligraphy letters can rise a little above the font's box.
     const r = o.getBoundingRect(true, true), p = Math.max(r.width, r.height) * 0.08;
     x0 = Math.min(x0, r.left - p); y0 = Math.min(y0, r.top - p); x1 = Math.max(x1, r.left + r.width + p); y1 = Math.max(y1, r.top + r.height + p);
   }
-  x0 = Math.max(0, x0); y0 = Math.max(0, y0); x1 = Math.min(EW, x1); y1 = Math.min(EH, y1);
+  x0 = Math.max(0, x0); y0 = Math.max(0, y0); x1 = Math.min(W, x1); y1 = Math.min(H, y1);
   const w = x1 - x0, h = y1 - y0;
   const scale = Math.min(PRINT_MM_PER_UNIT / 25.4 * PRINT_DPI, Math.sqrt(PRINT_MAX_PX / (w * h)));
   return { left: x0, top: y0, width: w, height: h, scale, mm: [w * PRINT_MM_PER_UNIT, h * PRINT_MM_PER_UNIT] };
@@ -1801,7 +1881,7 @@ function orderData(order) {
 async function partnerOrder(q) {
   const o = state.couple.other, prints = {};
   for (const s of q.other.sides) {
-    const c = new fabric.StaticCanvas(null, { width: EW, height: EH, enableRetinaScaling: false });
+    const c = new fabric.StaticCanvas(null, { width: ZONE_SIZE[s][0], height: ZONE_SIZE[s][1], enableRetinaScaling: false });
     await new Promise(ok => c.loadFromJSON(o.json[s], ok));
     prints[s] = { url: printFile(s, c), mm: printRect(s, c).mm };
     c.dispose();
@@ -1931,6 +2011,7 @@ i18n.onChange(() => {
   fillFontSelects();
   labelSwatches();
   renderProducts();
+  renderSides();
   renderCouple();
   loadLogos();
   $('#textInput').value = T('text.starter');
