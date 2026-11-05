@@ -758,7 +758,12 @@ function dressModel(gltf, product, printTex, zoneTexs = {}) {
   if (!prints.length) throw new Error('no mesh named "print"');
   root.userData.mg = !!root.getObjectByName('MG_' + product);
   // MG's own exports are in meters (1 unit = 0.27 m); other models are scaled to a similar size.
-  if (root.userData.mg) root.scale.setScalar(1 / 0.27);
+  if (root.userData.mg) {
+    root.scale.setScalar(1 / 0.27);
+    // The pants files are drawn about 1.5× too long (joggers 151 cm waist to ankle, real ones ~100 cm) and a little
+    // wide, which made them tower over the tops in an outfit. Bring them to real proportions.
+    if (styleOf(product).kind === 'pants') root.scale.multiply(new THREE.Vector3(0.9, 0.68, 0.9));
+  }
   else {
     const s = new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3());
     root.scale.setScalar(3.5 / Math.max(s.y, s.x * 0.8));
