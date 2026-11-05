@@ -64,6 +64,56 @@
   ]
  },
  {
+  "cat": "toons",
+  "items": [
+   "toons-avocadoHim",
+   "toons-avocadoHer",
+   "toons-bearHim",
+   "toons-bearHer",
+   "toons-catHim",
+   "toons-catHer",
+   "toons-ghostHim",
+   "toons-ghostHer",
+   "toons-penguinHim",
+   "toons-penguinHer",
+   "toons-bee",
+   "toons-flower",
+   "toons-cookie",
+   "toons-milk"
+  ]
+ },
+ {
+  "cat": "couples",
+  "items": [
+   "couples-heartL",
+   "couples-heartR",
+   "couples-puzzleMe",
+   "couples-puzzleYou",
+   "couples-lock",
+   "couples-key",
+   "couples-sun",
+   "couples-moon",
+   "couples-plug",
+   "couples-socket",
+   "couples-player1",
+   "couples-player2",
+   "couples-mr",
+   "couples-mrs",
+   "couples-his",
+   "couples-hers",
+   "couples-huwa",
+   "couples-hiya",
+   "couples-enta",
+   "couples-ana",
+   "couples-habibi",
+   "couples-habibti",
+   "couples-batteryLow",
+   "couples-batteryFull",
+   "couples-rings",
+   "couples-est"
+  ]
+ },
+ {
   "cat": "egypt",
   "items": [
    "egypt-pyramids",
