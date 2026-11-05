@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="brand/mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cairo:wght@400;600;700;900&family=Tajawal:wght@500;800&family=Lalezar&family=Reem+Kufi:wght@700&family=Amiri:wght@700&family=Bebas+Neue&family=Oswald:wght@600&family=Pacifico&family=Playfair+Display:wght@700&family=Permanent+Marker&family=Anton&family=Montserrat:wght@800&family=Bangers&family=Lobster&family=Dancing+Script:wght@700&family=Righteous&family=Russo+One&family=Black+Ops+One&family=Abril+Fatface&family=Bungee&family=Great+Vibes&family=Caveat:wght@700&family=Changa:wght@700&family=El+Messiri:wght@700&family=Aref+Ruqaa:wght@700&family=Rakkas&family=Marhey:wght@700&family=Lemonada:wght@700&family=Kufam:wght@700&family=Jomhuria&family=Mirza:wght@700&family=Vibes&display=swap" rel="stylesheet">
-<script src="i18n.js?v=34"></script>
+<script src="i18n.js?v=35"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <!-- Import maps need Safari 16.4+; this polyfill makes older iPhones load the 3D modules too. -->
@@ -447,6 +447,7 @@
       <button class="btn wa" id="sentShare" hidden data-i18n="sent.share"></button>
       <button class="btn" id="sentAgain" data-i18n="sent.again"></button>
       <a class="btn wa" id="sentOpen" target="_blank" rel="noopener" data-i18n="sent.open"></a>
+      <a class="btn" id="sentFile" target="_blank" rel="noopener" hidden data-i18n="sent.file"></a>
     </div>
     <div class="dlg-actions" style="margin-top:8px"><button class="btn" onclick="this.closest('dialog').close()" data-i18n="sent.done"></button></div>
   </div>
@@ -458,8 +459,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { EW, EH, STYLES, CATEGORIES, styleOf, buildGarment, printAreas, pocketOutlines } from './garment.js?v=34';
-import SHOP from './config.js?v=34';
+import { EW, EH, STYLES, CATEGORIES, styleOf, buildGarment, printAreas, pocketOutlines } from './garment.js?v=35';
+import SHOP from './config.js?v=35';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -492,7 +493,9 @@ const FONTS = {
 const starterFont = () => (i18n.lang === 'ar' ? 'Lalezar' : 'Bebas Neue');
 
 // Real print size: one editor unit is 1.6 mm, so the hoodie front area (190 units) prints 30 cm wide.
-const PRINT_MM_PER_UNIT = 1.6, PRINT_DPI = 300, PRINT_MAX_PX = 16e6;   // iPhones refuse canvases over ~16.7 MP
+const IS_PHONE = matchMedia('(pointer: coarse)').matches;
+// iPhones refuse canvases over ~16.7 MP, and a PDF of several such images runs a phone out of memory: phones use less.
+const PRINT_MM_PER_UNIT = 1.6, PRINT_DPI = 300, PRINT_MAX_PX = IS_PHONE ? 7e6 : 16e6;
 const SIZES = ['S', 'M', 'L', 'XL', '2XL'];
 const COLORS = [
   ['black', '#111318'], ['charcoal', '#3f4148'], ['white', '#f2f2ef'], ['grey', '#9ea3a8'], ['navy', '#1f2a44'], ['royal', '#2b59c3'],
@@ -2008,7 +2011,7 @@ function orderMessage(order, attached) {
     `${T('msg.address')}: ${order.address}`,
     order.notes ? `${T('msg.notes')}: ${order.notes}` : null,
     '',
-    T(attached ? 'msg.attached' : 'msg.files', { file: order.files[0].name }),
+    order.files[0] ? T(attached ? 'msg.attached' : 'msg.files', { file: order.files[0].name }) : T('msg.noFile'),
   ].filter(l => l !== undefined && l !== false && l !== null).join('\n');
 }
 const dataUrlToBlob = url => fetch(url).then(r => r.blob());
@@ -2145,53 +2148,73 @@ $('#orderForm').onsubmit = async e => {
   e.preventDefault();
   $('#orderBusy').hidden = false;
   $('#confirmOrder').disabled = true;
+  let order;
   try {
     const q = quote(), code = 'MG-' + Date.now().toString(36).slice(-5).toUpperCase();
-    const order = {
+    order = {
       code, quote: q,
       name: $('#custName').value.trim(), phone: $('#custPhone').value.trim(), city: $('#custCity').value.trim(),
-      address: $('#custAddr').value.trim(), notes: $('#custNotes').value.trim(),
+      address: $('#custAddr').value.trim(), notes: $('#custNotes').value.trim(), files: [],
     };
-    if (ready) {
-      // The customer's own files: images go into the PDF at full resolution, PDFs are sent alongside as they are.
-      order.ready = true;
-      order.prints = {};
-      for (const s of q.sides) if (ready[s].type.startsWith('image/')) order.prints[s] = await fileToDataUrl(ready[s]);
-      order.previewFront = order.prints.front; order.previewBack = order.prints.back;
-      order.files = [await orderPdf(order), ...q.sides.filter(s => !order.prints[s])
-        .map(s => new File([ready[s]], `${code}-design-${s}.${ready[s].name.split('.').pop().toLowerCase()}`, { type: ready[s].type }))];
-    } else {
-      order.previewFront = $('#pvFront').src; order.previewBack = $('#pvBack').src;
-      order.prints = Object.fromEntries(q.sides.map(s => [s, printFile(s)]));
-      if (state.couple) { order.mainLabel = pieceName(state.couple.active); order.partner = await partnerOrder(q); }
-      order.files = [await orderPdf(order)];
+    try {
+      if (ready) {
+        // The customer's own files: images go into the PDF at full resolution, PDFs are sent alongside as they are.
+        order.ready = true;
+        order.prints = {};
+        for (const s of q.sides) if (ready[s].type.startsWith('image/')) order.prints[s] = await fileToDataUrl(ready[s]);
+        order.previewFront = order.prints.front; order.previewBack = order.prints.back;
+        order.files = [await orderPdf(order), ...q.sides.filter(s => !order.prints[s])
+          .map(s => new File([ready[s]], `${code}-design-${s}.${ready[s].name.split('.').pop().toLowerCase()}`, { type: ready[s].type }))];
+      } else {
+        order.previewFront = $('#pvFront').src; order.previewBack = $('#pvBack').src;
+        order.prints = Object.fromEntries(q.sides.map(s => [s, printFile(s)]));
+        if (state.couple) { order.mainLabel = pieceName(state.couple.active); order.partner = await partnerOrder(q); }
+        order.files = [await orderPdf(order)];
+      }
+    } catch (err) {
+      // Without the file the order still goes through as text; the shop asks for the design in the chat.
+      console.error(err);
+      order.files = [];
+      toast(T('sent.fileFailed'));
     }
+    order.prints = order.previewFront = order.previewBack = null;   // free the big images
     lastOrder = order;
-    const canShare = matchMedia('(pointer: coarse)').matches && shareFiles(true);
-    if (!canShare) downloadImages();
+    const hasFile = order.files.length > 0;
+    const canShare = IS_PHONE && hasFile && shareFiles(true);
+    if (hasFile && !IS_PHONE) downloadImages();
 
     $('#orderDlg').close();
-    // Phones send the message and the PDF together through the share sheet; computers open WhatsApp and attach the downloaded PDF.
-    $('#sentStep1').textContent = T(canShare ? 'sent.phone' : 'sent.step1', { number: SHOP_NUMBER });
-    $('#sentStep2').textContent = T('sent.step2', { file: order.files[0].name });
-    $('#sentStep2').hidden = canShare;
+    // Phones: one button writes the order text in the CMG chat, a second sends the PDF (shared alone, because WhatsApp
+    // on iPhone drops the file when text comes with it). Browsers that can't share files (Facebook/Instagram) open the PDF instead.
+    // Computers open WhatsApp and attach the downloaded PDF.
+    $('#sentStep1').textContent = T(IS_PHONE ? 'sent.phoneText' : 'sent.step1', { number: SHOP_NUMBER });
+    $('#sentStep2').textContent = !hasFile ? T('sent.noFile') : IS_PHONE ? T(canShare ? 'sent.phoneFile' : 'sent.phoneOpen', { file: order.files[0].name })
+      : T('sent.step2', { file: order.files[0].name });
     $('#sentOpen').href = `https://wa.me/${SHOP.whatsapp}?text=${encodeURIComponent(orderMessage(order))}`;
-    $('#sentOpen').className = canShare ? 'btn' : 'btn wa';
-    $('#sentOpen').textContent = T(canShare ? 'sent.textOnly' : 'sent.open');
+    $('#sentOpen').className = 'btn wa';
+    $('#sentOpen').textContent = T(IS_PHONE ? 'sent.openText' : 'sent.open');
     $('#sentShare').hidden = !canShare;
-    $('#sentAgain').hidden = canShare;
+    if (fileUrl) URL.revokeObjectURL(fileUrl);
+    fileUrl = hasFile ? URL.createObjectURL(order.files[0]) : '';
+    $('#sentFile').hidden = !(IS_PHONE && hasFile && !canShare);
+    $('#sentFile').href = fileUrl; $('#sentFile').download = hasFile ? order.files[0].name : '';
+    $('#sentAgain').hidden = IS_PHONE || !hasFile;
     $('#sentDlg').showModal();
+  } catch (err) {
+    console.error(err);
+    toast(T('sent.failed'));
   } finally {
     $('#orderBusy').hidden = true;
     $('#confirmOrder').disabled = false;
   }
 };
+let fileUrl = '';
 function downloadImages() { lastOrder.files.forEach((f, i) => setTimeout(() => download(URL.createObjectURL(f), f.name), i * 400)); }
 $('#sentAgain').onclick = () => lastOrder && downloadImages();
 // On phones, the share sheet sends the PDF straight into the WhatsApp chat.
 function shareFiles(checkOnly) {
   if (!lastOrder || !navigator.canShare || !navigator.canShare({ files: lastOrder.files })) return false;
-  if (!checkOnly) navigator.share({ files: lastOrder.files, text: orderMessage(lastOrder, true) }).catch(() => {});
+  if (!checkOnly) navigator.share({ files: lastOrder.files, title: lastOrder.files[0].name }).catch(() => {});
   return true;
 }
 $('#sentShare').onclick = () => shareFiles(false);
