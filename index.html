@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="brand/mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cairo:wght@400;600;700;900&family=Tajawal:wght@500;800&family=Lalezar&family=Reem+Kufi:wght@700&family=Amiri:wght@700&family=Bebas+Neue&family=Oswald:wght@600&family=Pacifico&family=Playfair+Display:wght@700&family=Permanent+Marker&family=Anton&family=Montserrat:wght@800&family=Bangers&family=Lobster&family=Dancing+Script:wght@700&family=Righteous&family=Russo+One&family=Black+Ops+One&family=Abril+Fatface&family=Bungee&family=Great+Vibes&family=Caveat:wght@700&family=Changa:wght@700&family=El+Messiri:wght@700&family=Aref+Ruqaa:wght@700&family=Rakkas&family=Marhey:wght@700&family=Lemonada:wght@700&family=Kufam:wght@700&family=Jomhuria&family=Mirza:wght@700&family=Vibes&display=swap" rel="stylesheet">
-<script src="i18n.js?v=33"></script>
+<script src="i18n.js?v=34"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <!-- Import maps need Safari 16.4+; this polyfill makes older iPhones load the 3D modules too. -->
@@ -458,8 +458,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { EW, EH, STYLES, CATEGORIES, styleOf, buildGarment, printAreas, pocketOutlines } from './garment.js?v=33';
-import SHOP from './config.js?v=33';
+import { EW, EH, STYLES, CATEGORIES, styleOf, buildGarment, printAreas, pocketOutlines } from './garment.js?v=34';
+import SHOP from './config.js?v=34';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -759,18 +759,19 @@ let realModel = null, printMeshes = [];
 const gltfLoader = new GLTFLoader();
 const modelCache = {};
 
-// Wide-leg pants and shorts: the model files have tapered legs, so they are reshaped when loaded. Each leg is
-// made as wide at the hem as at the thigh (straight and wide), plus a little extra toward the hem; girls' fit
-// gets more. Joggers keep their taper and cuffs; girls' joggers are just roomier.
+// Pants are reshaped when loaded, from product photos of real joggers, wide-leg pants and shorts:
+// - wide styles: each leg as wide at the hem as at the thigh (plus a little), widening outward so the gap
+//   between the legs stays, as in a flat-lay photo; girls' fit gets more;
+// - every style: soft lengthwise folds down the legs, and on joggers the fabric gathers above the cuffs.
 const LEG_EXTRA = { sweatpants: [0.12, 0.3], shorts: [0.08, 0.25] };   // [boys, girls]
 function shapeLegs(root, product, fit) {
   const extra = LEG_EXTRA[product]?.[fit === 'women' ? 1 : 0];
   const roomy = product === 'joggers' && fit === 'women' ? 1.1 : 1;
-  if (extra == null && roomy === 1) return;
   root.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(root), H = box.max.y - box.min.y;
   const cx = (box.min.x + box.max.x) / 2, cz = (box.min.z + box.max.z) / 2, crotch = box.max.y - H * 0.34;
-  const N = 24, bin = y => Math.max(0, Math.min(N - 1, Math.floor((crotch - y) / (crotch - box.min.y) * N)));
+  const legLen = crotch - box.min.y;
+  const N = 24, bin = y => Math.max(0, Math.min(N - 1, Math.floor((crotch - y) / legLen * N)));
   const v = new THREE.Vector3(), inv = new THREE.Matrix4(), meshes = [];
   root.traverse(o => { if (o.isMesh) meshes.push(o); });
   const each = fn => { for (const o of meshes) { const pos = o.geometry.attributes.position; for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); if (v.y < crotch) fn(v, v.x < cx ? 0 : 1); } } };
@@ -778,31 +779,47 @@ function shapeLegs(root, product, fit) {
   const sum = [new Float64Array(N), new Float64Array(N)], cnt = [new Float64Array(N), new Float64Array(N)], half = [new Float64Array(N), new Float64Array(N)];
   each((p, s) => { const b = bin(p.y); sum[s][b] += p.x; cnt[s][b]++; });
   const ctr = [0, 1].map(s => Array.from({ length: N }, (_, b) => (cnt[s][b] ? sum[s][b] / cnt[s][b] : NaN)));
+  for (const c of ctr) for (let b = 0; b < N; b++) if (Number.isNaN(c[b])) c[b] = b ? c[b - 1] : cx;
   each((p, s) => { const b = bin(p.y); half[s][b] = Math.max(half[s][b], Math.abs(p.x - ctr[s][b])); });
+  // Smooth the measured profile, then read it between bands, so the reshaped leg has no steps.
+  const smooth = a => a.map((_, b) => (a[Math.max(0, b - 1)] + a[b] + a[Math.min(N - 1, b + 1)]) / 3);
+  for (const s of [0, 1]) { ctr[s] = smooth(smooth(ctr[s])); half[s] = smooth(smooth(Array.from(half[s]))); }
+  const at = (a, y) => { const f = Math.max(0, Math.min(N - 1, (crotch - y) / legLen * N - 0.5)), b = Math.floor(f), w = f - b; return a[b] * (1 - w) + a[Math.min(N - 1, b + 1)] * w; };
   const scale = [0, 1].map(s => {
     const top = half[s][0] || half[s][1];
     return Array.from({ length: N }, (_, b) => {
-      const t = b / (N - 1);
       if (extra == null) return roomy;
-      return half[s][b] ? Math.max(1, top * (1 + extra * t) / half[s][b]) : 1;
+      return half[s][b] ? Math.max(1, top * (1 + extra * b / (N - 1)) / half[s][b]) : 1;
     });
   });
+  const cuffed = product === 'joggers';
   for (const o of meshes) {
     o.geometry = o.geometry.clone();                 // the loaded file is shared; reshape a copy
-    const pos = o.geometry.attributes.position;
+    const pos = o.geometry.attributes.position, isRib = /rib/i.test(o.name);
     inv.copy(o.matrixWorld).invert();
     for (let i = 0; i < pos.count; i++) {
       v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
       if (v.y < crotch) {
-        const s = v.x < cx ? 0 : 1, b = bin(v.y), c = Number.isNaN(ctr[s][b]) ? cx : ctr[s][b];
-        // Ease in over the first bands so the crotch stays as it is.
-        const k = 1 + (scale[s][b] - 1) * Math.min(1, b / 3);
-        v.x = c + (v.x - c) * k; v.z = cz + (v.z - cz) * k;
+        const s = v.x < cx ? 0 : 1, c = at(ctr[s], v.y), hw = at(half[s], v.y), f = (crotch - v.y) / legLen * N;
+        const k = 1 + (at(scale[s], v.y) - 1) * Math.min(1, f / 3);  // ease in so the crotch stays as it is
+        const out = s === 0 ? -1 : 1, inner = c - out * hw;            // grow away from the other leg
+        const nc = inner + (c - inner) * k;
+        v.x = inner + (v.x - inner) * k;
+        v.z = cz + (v.z - cz) * (1 + (k - 1) * 0.6);
+        if (!isRib) {
+          // Folds: gentle lengthwise waves around the leg, stronger toward the hem.
+          const t = (crotch - v.y) / legLen, dx = v.x - nc, dz = v.z - cz, r = Math.hypot(dx, dz) || 1, a = Math.atan2(dz, dx);
+          let d = 0.011 * (0.3 + t) * (0.6 * Math.sin(a * 4 + v.y * 1.3) + 0.4 * Math.sin(a * 9 - v.y * 2.2));
+          // Joggers: the fabric bunches in rings above the elastic cuff.
+          if (cuffed && t > 0.8) d += 0.016 * Math.sin(v.y * 55 + a * 2) * (0.6 + 0.4 * Math.sin(a * 3)) * Math.min(1, (t - 0.8) / 0.08);
+          v.x += dx / r * d; v.z += dz / r * d;
+        }
       }
       v.applyMatrix4(inv);
       pos.setXYZ(i, v.x, v.y, v.z);
     }
     pos.needsUpdate = true;
+    o.geometry.computeVertexNormals();               // so the folds catch the light
     o.geometry.computeBoundingBox(); o.geometry.computeBoundingSphere();
   }
 }
@@ -841,7 +858,7 @@ function dressModel(gltf, product, printTex, zoneTexs = {}, fit = state.fit) {
     // The pants files are drawn about 1.5× too long (joggers 151 cm waist to ankle, real ones ~100 cm) and a little
     // wide, which made them tower over the tops in an outfit. Bring them to real proportions.
     if (styleOf(product).kind === 'pants') {
-      root.scale.multiply(new THREE.Vector3(0.9, 0.68, 0.9));
+      root.scale.multiply(new THREE.Vector3(0.9, product === 'sweatpants' ? 0.72 : 0.68, 0.9));   // wide-leg pants run a little longer
       shapeLegs(root, product, fit);
     }
   }
@@ -1319,9 +1336,10 @@ async function addLogo(id, partnerToo = true) {
 const PAIRS = Object.fromEntries([
   ['heartL', 'heartR'], ['puzzleMe', 'puzzleYou'], ['lock', 'key'], ['sun', 'moon'], ['plug', 'socket'], ['player1', 'player2'],
   ['mr', 'mrs'], ['his', 'hers'], ['huwa', 'hiya'], ['enta', 'ana'], ['habibi', 'habibti'], ['batteryLow', 'batteryFull'],
+  ['youMine', 'foreverYours'], ['nothingSense', 'whenApart'], ['puzzleHeart', 'puzzlePiece'],
 ].map(([a, b]) => ['couples-' + a, 'couples-' + b]).concat(
   [['avocadoHim', 'avocadoHer'], ['bearHim', 'bearHer'], ['catHim', 'catHer'], ['ghostHim', 'ghostHer'], ['penguinHim', 'penguinHer'],
-   ['bee', 'flower'], ['cookie', 'milk']].map(([a, b]) => ['toons-' + a, 'toons-' + b]),
+   ['bee', 'flower'], ['cookie', 'milk'], ['dinoHim', 'dinoHer'], ['foxHim', 'bunnyHer']].map(([a, b]) => ['toons-' + a, 'toons-' + b]),
 ).flatMap(([a, b]) => [[a, b], [b, a]]));
 const emptySide = () => ({ version: fabric.version, objects: [] });
 const blankQty = () => ({ S: 0, M: 1, L: 0, XL: 0, '2XL': 0 });
