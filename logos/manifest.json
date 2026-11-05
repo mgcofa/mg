@@ -27,43 +27,6 @@
   ]
  },
  {
-  "cat": "islamic",
-  "items": [
-   "islamic-sabr",
-   "islamic-tawakkul",
-   "islamic-shukr",
-   "islamic-ihsan",
-   "islamic-yarab",
-   "islamic-jannah",
-   "islamic-hasbuna",
-   "islamic-window",
-   "islamic-kaaba",
-   "islamic-misbaha",
-   "islamic-desert",
-   "islamic-crescent",
-   "islamic-rub",
-   "islamic-mosque",
-   "islamic-lantern",
-   "islamic-star8",
-   "islamic-mihrab",
-   "islamic-bismillah",
-   "islamic-alhamdulillah",
-   "islamic-subhanallah",
-   "islamic-allahuakbar",
-   "islamic-mashallah",
-   "islamic-tawheed",
-   "islamic-astaghfirullah",
-   "islamic-tawakkalt",
-   "islamic-hasbi",
-   "islamic-yusra",
-   "islamic-latahzan",
-   "islamic-ramadan",
-   "islamic-eid",
-   "islamic-alhamdulillahEn",
-   "islamic-bismillahEn"
-  ]
- },
- {
   "cat": "toons",
   "items": [
    "toons-avocadoHim",
@@ -189,12 +152,10 @@
    "heart",
    "bolt",
    "flame",
-   "skull",
    "diamond",
    "sparkles",
    "infinity",
    "peace",
-   "yin-yang",
    "anchor",
    "shield",
    "rocket",
@@ -202,7 +163,6 @@
    "mood-smile",
    "eye",
    "key",
-   "bomb",
    "spiral",
    "circle-dotted",
    "hexagon"
@@ -227,7 +187,6 @@
    "planet",
    "cactus",
    "seeding",
-   "rainbow",
    "tornado"
   ]
  },
@@ -312,13 +271,11 @@
  {
   "cat": "power",
   "items": [
-   "swords",
-   "sword",
-   "axe",
    "shield-star",
    "helmet",
-   "bow",
-   "gauge"
+   "gauge",
+   "barbell",
+   "bolt"
   ]
  }
 ]
