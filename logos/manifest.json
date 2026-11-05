@@ -27,6 +27,43 @@
   ]
  },
  {
+  "cat": "islamic",
+  "items": [
+   "islamic-sabr",
+   "islamic-tawakkul",
+   "islamic-shukr",
+   "islamic-ihsan",
+   "islamic-yarab",
+   "islamic-jannah",
+   "islamic-hasbuna",
+   "islamic-window",
+   "islamic-kaaba",
+   "islamic-misbaha",
+   "islamic-desert",
+   "islamic-crescent",
+   "islamic-rub",
+   "islamic-mosque",
+   "islamic-lantern",
+   "islamic-star8",
+   "islamic-mihrab",
+   "islamic-bismillah",
+   "islamic-alhamdulillah",
+   "islamic-subhanallah",
+   "islamic-allahuakbar",
+   "islamic-mashallah",
+   "islamic-tawheed",
+   "islamic-astaghfirullah",
+   "islamic-tawakkalt",
+   "islamic-hasbi",
+   "islamic-yusra",
+   "islamic-latahzan",
+   "islamic-ramadan",
+   "islamic-eid",
+   "islamic-alhamdulillahEn",
+   "islamic-bismillahEn"
+  ]
+ },
+ {
   "cat": "egypt",
   "items": [
    "egypt-pyramids",
