@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="brand/mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cairo:wght@400;600;700;900&family=Tajawal:wght@500;800&family=Lalezar&family=Reem+Kufi:wght@700&family=Amiri:wght@700&family=Bebas+Neue&family=Oswald:wght@600&family=Pacifico&family=Playfair+Display:wght@700&family=Permanent+Marker&family=Anton&family=Montserrat:wght@800&family=Bangers&family=Lobster&family=Dancing+Script:wght@700&family=Righteous&family=Russo+One&family=Black+Ops+One&family=Abril+Fatface&family=Bungee&family=Great+Vibes&family=Caveat:wght@700&family=Changa:wght@700&family=El+Messiri:wght@700&family=Aref+Ruqaa:wght@700&family=Rakkas&family=Marhey:wght@700&family=Lemonada:wght@700&family=Kufam:wght@700&family=Jomhuria&family=Mirza:wght@700&family=Vibes&display=swap" rel="stylesheet">
-<script src="i18n.js?v=16"></script>
+<script src="i18n.js?v=18"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <!-- Import maps need Safari 16.4+; this polyfill makes older iPhones load the 3D modules too. -->
@@ -76,7 +76,10 @@
   .sel-bar { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
   .sel-bar .qc-part { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1; min-width: 0; }
   .sel-bar .del { margin-inline-start: auto; flex: none; align-self: flex-start; background: var(--danger); border-color: var(--danger); color: #fff; font-weight: 700; }
-  .logo-grid img { width: 100%; height: 100%; display: block; }
+  .logo-grid img, .logo-grid svg { width: 100%; height: 100%; display: block; }
+  .logo-grid button { color: var(--text); }
+  .logo-grid button svg [fill="#fffffe"] { fill: var(--panel); }
+  .logo-grid button svg [stroke="#fffffe"] { stroke: var(--panel); }
   .row { display: flex; gap: 8px; align-items: center; }
   .row + .row { margin-top: 8px; }
   input[type=text], input[type=tel], textarea, select, input[type=number] { font: inherit; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; background: var(--panel); color: var(--text); }
@@ -139,6 +142,9 @@
   .summary { margin: 14px 0; font-size: 13px; }
   .summary div { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; color: var(--muted); }
   .summary .total { color: var(--text); font-weight: 700; font-size: 16px; border-top: 1px solid var(--line); margin-top: 6px; padding-top: 8px; }
+  .summary s { color: #a1a1aa; font-weight: 500; font-size: .9em; margin-inline-end: 6px; }
+  .summary .sub { color: var(--text); font-weight: 600; border-top: 1px dashed var(--line); margin-top: 4px; padding-top: 6px; }
+  .summary .save span:last-child { color: #16a34a; font-weight: 600; }
 
   dialog { border: 0; border-radius: 16px; padding: 0; width: min(560px, calc(100% - 32px)); box-shadow: 0 20px 60px rgba(0,0,0,.25); color: var(--text); }
   dialog::backdrop { background: rgba(0,0,0,.4); }
@@ -367,8 +373,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { EW, EH, STYLES, CATEGORIES, styleOf, buildGarment, printAreas, pocketOutlines } from './garment.js?v=16';
-import SHOP from './config.js?v=16';
+import { EW, EH, STYLES, CATEGORIES, styleOf, buildGarment, printAreas, pocketOutlines } from './garment.js?v=18';
+import SHOP from './config.js?v=18';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -377,6 +383,19 @@ const T = i18n.t, money = n => i18n.money(n), pct = n => i18n.pct(n);
 // Fabric caches each object as a bitmap capped at ~2 megapixels; exporting print files at 3600 px from
 // those caches made them blurry. Always draw objects directly instead (the canvases are small anyway).
 fabric.Object.prototype.objectCaching = false;
+// Fabric adds up letter widths one by one, but Arabic letters join and change shape, so calligraphy fonts
+// (Ruqaa, Amiri…) came out wider or narrower than the box, and print files could cut their ends off.
+// Arabic lines are measured whole, the way the browser draws them, and the letter positions stretched to fit.
+const measureLine = fabric.Text.prototype.measureLine;
+const measureCtx = fabric.util.createCanvasElement().getContext('2d');
+fabric.Text.prototype.measureLine = function (i) {
+  const m = measureLine.call(this, i), line = this._textLines[i].join('');
+  if (!/[؀-ۿ]/.test(line) || this.charSpacing || !m.width) return m;
+  measureCtx.font = this._getFontDeclaration();
+  const width = measureCtx.measureText(line).width, k = width / m.width;
+  for (const b of this.__charBounds[i] || []) { b.left *= k; b.width *= k; b.kernedWidth *= k; }
+  return { ...m, width };
+};
 
 // Design fonts. Arabic ones also carry Latin glyphs, so mixed text still renders.
 const FONTS = {
@@ -880,11 +899,19 @@ function renderLogos() {
   for (const id of logoSets.find(s => s.cat === logoCat)?.items || []) {
     const b = document.createElement('button');
     b.title = id;
-    b.innerHTML = `<img alt="" loading="lazy" src="logos/${id}.svg">`;
     b.onclick = () => addLogo(id);
     $('#logoGrid').append(b);
+    // Drawn inline, not as <img>, so lettering logos show in their own web font (calligraphy, Lalezar…).
+    logoSvg(id).then(svg => { b.innerHTML = svg; }).catch(() => { b.innerHTML = `<img alt="" src="logos/${id}.svg">`; });
   }
 }
+const logoCache = new Map();
+const logoSvg = id => {
+  if (!logoCache.has(id)) logoCache.set(id, fetch(`logos/${id}.svg`).then(r => r.ok ? r.text() : Promise.reject()));
+  return logoCache.get(id);
+};
+// The web fonts a logo's lettering uses, so they're loaded before Fabric draws it.
+const svgFonts = svg => [...new Set([...svg.matchAll(/font-family="([^"]+)"/g)].map(m => m[1]))];
 // A logo in CMG's shape around the customer's own letters: a C whose top arm reaches the end of the
 // first letter and whose bottom arm runs under them all. Arabic letters get the mirrored shape.
 $('#monoAdd').onclick = async () => {
@@ -927,9 +954,8 @@ $('#monoInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('#mo
 async function addLogo(id) {
   try {
     const color = isLight(state.color) ? '#111111' : '#ffffff';
-    const svg = (await (await fetch(`logos/${id}.svg`)).text())
-      .replace(/currentColor/g, color).replace(/#fffffe/gi, state.color);
-    await Promise.all(['Lalezar', 'Bebas Neue'].map(loadFont));
+    const svg = (await logoSvg(id)).replace(/currentColor/g, color).replace(/#fffffe/gi, state.color);
+    await Promise.all(svgFonts(svg).map(loadFont));
     fabric.loadSVGFromString(svg, (objects, options) => {
       const isCut = v => typeof v === 'string' && v.toLowerCase() === state.color.toLowerCase();
       for (const o of objects) if (isCut(o.fill) || isCut(o.stroke)) o.cutout = true;
@@ -1196,15 +1222,25 @@ function quote() {
   return { sides, pcs, unit, subtotal, discRate, discount, total: subtotal - discount };
 }
 const sidesLabel = sides => T('sides.' + (sides.length === 2 ? 'both' : sides[0] || 'none'));
+// Every part of the price on its own line: the piece (before/after the launch offer), each print side, the
+// price per piece, pieces, extras and discounts; the total shows the full price crossed out next to what they pay.
 function summaryHTML(q) {
   const [minPcs, minRate] = SHOP.bulkDiscounts[SHOP.bulkDiscounts.length - 1] || [10, 0.1];
-  return `${OFFER ? `<div class="offer"><span>${T('offer.line', { off: money(OFFER.off), date: i18n.date(OFFER.until) })}</span></div>` : ''}
-    <div><span>${T('sum.item', { product: T('product.' + state.product), sides: sidesLabel(q.sides) })}</span><span>${T('sum.perPiece', { price: money(q.unit) })}</span></div>
-    <div><span>${T('sum.pieces')}</span><span>${i18n.num(q.pcs)}</span></div>
-    ${state.qty['2XL'] ? `<div><span>${T('sum.xxl')}</span><span>${money(state.qty['2XL'] * SHOP.xxlSurcharge)}</span></div>` : ''}
-    ${q.discRate ? `<div><span>${T('sum.bulk', { rate: pct(q.discRate * 100) })}</span><span>−${money(q.discount)}</span></div>`
-                 : `<div><span>${T('sum.bulkLabel')}</span><span>${T('sum.bulkHint', { rate: pct(minRate * 100), n: i18n.num(minPcs) })}</span></div>`}
-    <div class="total"><span>${T('sum.total')}</span><span>${money(q.total)}</span></div>`;
+  const p = PRODUCTS[state.product], xxl = state.qty['2XL'] * SHOP.xxlSurcharge;
+  const full = (p.was + q.sides.reduce((a, s) => a + SHOP.printPrices[s], 0)) * q.pcs + xxl;
+  const row = (k, v, cls = '') => `<div class="${cls}"><span>${k}</span><span>${v}</span></div>`;
+  return [
+    OFFER && `<div class="offer"><span>${T('offer.line', { off: money(OFFER.off), date: i18n.date(OFFER.until) })}</span></div>`,
+    row(T('product.' + state.product), (OFFER ? `<s>${money(p.was)}</s> ` : '') + money(p.price)),
+    ...q.sides.map(side => row(T('sum.print.' + side), '+ ' + money(SHOP.printPrices[side]))),
+    row(T('sum.unit'), money(q.unit), 'sub'),
+    row(T('sum.pieces'), '× ' + i18n.num(q.pcs)),
+    xxl && row(T('sum.xxl'), '+ ' + money(xxl)),
+    q.discRate ? row(T('sum.bulk', { rate: pct(q.discRate * 100) }), '− ' + money(q.discount), 'save')
+               : row(T('sum.bulkLabel'), T('sum.bulkHint', { rate: pct(minRate * 100), n: i18n.num(minPcs) })),
+    row(T('sum.total'), (full > q.total + 0.005 ? `<s>${money(full)}</s> ` : '') + `<b>${money(q.total)}</b>`, 'total'),
+    full > q.total + 0.005 && row(T('sum.saved'), money(full - q.total), 'save'),
+  ].filter(Boolean).join('');
 }
 function updateSummary() {
   const q = quote();
@@ -1220,8 +1256,9 @@ function printRect(side) {
   const a = PRODUCTS[state.product].areas[side];
   let [x0, y0, x1, y1] = [a.x, a.y, a.x + a.w, a.y + a.h];
   for (const o of editors[side].getObjects()) {
-    const r = o.getBoundingRect(true, true);
-    x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top); x1 = Math.max(x1, r.left + r.width); y1 = Math.max(y1, r.top + r.height);
+    // A small margin: tall calligraphy letters can rise a little above the font's box.
+    const r = o.getBoundingRect(true, true), p = Math.max(r.width, r.height) * 0.08;
+    x0 = Math.min(x0, r.left - p); y0 = Math.min(y0, r.top - p); x1 = Math.max(x1, r.left + r.width + p); y1 = Math.max(y1, r.top + r.height + p);
   }
   x0 = Math.max(0, x0); y0 = Math.max(0, y0); x1 = Math.min(EW, x1); y1 = Math.min(EH, y1);
   const w = x1 - x0, h = y1 - y0;
