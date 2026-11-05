@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="brand/mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cairo:wght@400;600;700;900&family=Tajawal:wght@500;800&family=Lalezar&family=Reem+Kufi:wght@700&family=Amiri:wght@700&family=Bebas+Neue&family=Oswald:wght@600&family=Pacifico&family=Playfair+Display:wght@700&family=Permanent+Marker&family=Anton&family=Montserrat:wght@800&family=Bangers&family=Lobster&family=Dancing+Script:wght@700&family=Righteous&family=Russo+One&family=Black+Ops+One&family=Abril+Fatface&family=Bungee&family=Great+Vibes&family=Caveat:wght@700&family=Changa:wght@700&family=El+Messiri:wght@700&family=Aref+Ruqaa:wght@700&family=Rakkas&family=Marhey:wght@700&family=Lemonada:wght@700&family=Kufam:wght@700&family=Jomhuria&family=Mirza:wght@700&family=Vibes&display=swap" rel="stylesheet">
-<script src="i18n.js?v=20"></script>
+<script src="i18n.js?v=21"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <!-- Import maps need Safari 16.4+; this polyfill makes older iPhones load the 3D modules too. -->
@@ -59,6 +59,14 @@
   @media (max-width: 640px) { .offer-pill { display: none; } }
   .prod.on { border-color: var(--accent); background: var(--accent-soft); }
   .swatches { display: grid; grid-template-columns: repeat(auto-fill, 32px); gap: 8px; }
+  .set-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+  .set-grid button { border: 1.5px solid var(--line); border-radius: 10px; background: var(--panel); padding: 6px 4px; cursor: pointer; font: inherit; color: var(--text); }
+  .set-grid button.on { border-color: var(--accent); background: var(--accent-soft); }
+  .set-grid svg { width: 100%; height: 64px; display: block; }
+  .set-grid b { display: block; font-size: 12px; margin-top: 4px; }
+  .set-grid span { display: block; font-size: 11px; color: var(--muted); }
+  .set-chosen { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; padding: 8px 10px; border-radius: 10px; background: #ecfdf5; color: #065f46; font-weight: 600; font-size: 13px; }
+  .set-chosen .btn { padding: 4px 10px; font-size: 12px; }
   .sw { aspect-ratio: 1; border-radius: 50%; border: 2px solid transparent; outline: 1px solid rgba(0,0,0,.15); cursor: pointer; padding: 0; }
   .sw.on { border-color: var(--panel); outline: 2px solid var(--accent); }
   .chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 8px; }
@@ -205,6 +213,14 @@
         <h3 style="margin-bottom:8px" data-i18n="color.strings">Drawstring color</h3>
         <div class="row" style="gap:10px"><div class="qc" id="stringSwatches"></div><input type="color" id="stringCustom" value="#e11d48" data-i18n-title="strings.custom"></div>
       </div>
+    </div>
+
+    <div class="sec" id="setSec">
+      <h3 data-i18n="set.title">Make it a set</h3>
+      <p class="hint" id="setHint" style="margin:0 0 8px"></p>
+      <div class="chips" id="setProducts"></div>
+      <div class="set-grid" id="setGrid"></div>
+      <div class="set-chosen" id="setChosen" hidden><span></span><button class="btn" id="setRemove" data-i18n="set.remove">Remove</button></div>
     </div>
 
     <div class="sec">
@@ -380,8 +396,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { EW, EH, STYLES, CATEGORIES, styleOf, buildGarment, printAreas, pocketOutlines } from './garment.js?v=20';
-import SHOP from './config.js?v=20';
+import { EW, EH, STYLES, CATEGORIES, styleOf, buildGarment, printAreas, pocketOutlines } from './garment.js?v=21';
+import SHOP from './config.js?v=21';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -425,7 +441,7 @@ const PRODUCTS = Object.fromEntries(Object.keys(STYLES).map(p => [p, {
   was: SHOP.prices[p] ?? 0, price: Math.max(0, (SHOP.prices[p] ?? 0) - (OFFER?.off || 0)), areas: printAreas(p),
 }]));
 
-const state = { product: 'hoodie', color: '#1f2a44', strings: 'white', stringCustom: '#e11d48', side: 'front', qty: { S: 0, M: 1, L: 0, XL: 0, '2XL': 0 } };
+const state = { product: 'hoodie', color: '#1f2a44', strings: 'white', stringCustom: '#e11d48', side: 'front', qty: { S: 0, M: 1, L: 0, XL: 0, '2XL': 0 }, set: null };
 
 // ---------- 2D editors (Fabric.js) ----------
 Object.assign(fabric.Object.prototype, {
@@ -1181,7 +1197,10 @@ function renderProducts() {
 function setProduct(p) {
   state.product = p;
   category = styleOf(p).category;
+  // A matching piece only makes sense on the other half of the outfit.
+  if (state.set && styleOf(state.set.product).kind === styleOf(p).kind) state.set = null;
   renderProducts();
+  renderSet();
   loadProductModel();
 }
 COLORS.forEach(([name, hex]) => {
@@ -1195,7 +1214,71 @@ function setColor(c) {
   state.color = c;
   $$('.sw').forEach(s => s.classList.toggle('on', s.dataset.hex === c));
   applyGarment();
+  renderSet();
 }
+const colorName = hex => {
+  const named = COLORS.find(([, h]) => h === hex);
+  return named ? T('color.' + named[0]) : '‎' + hex;
+};
+
+// ---------- Make it a set ----------
+// Colors that go with each garment color, best first; the same color makes a full matching set.
+const MATCHES = {
+  black: ['black', 'grey', 'sand', 'white'], charcoal: ['charcoal', 'black', 'grey', 'sand'], white: ['black', 'grey', 'navy', 'sand'],
+  grey: ['grey', 'black', 'navy', 'charcoal'], navy: ['navy', 'grey', 'sand', 'white'], royal: ['black', 'grey', 'white', 'navy'],
+  red: ['black', 'charcoal', 'grey', 'white'], green: ['sand', 'black', 'charcoal', 'green'], sand: ['sand', 'green', 'navy', 'charcoal'],
+  pink: ['grey', 'white', 'black', 'pink'], orange: ['black', 'charcoal', 'navy', 'white'], purple: ['black', 'grey', 'charcoal', 'white'],
+};
+const NEUTRALS = ['black', 'charcoal', 'white', 'grey', 'navy', 'sand'];
+const SET_PARTNERS = { top: ['joggers', 'sweatpants', 'shorts'], pants: ['hoodie', 'hoodie_oversized', 'crew', 'crew_oversized'] };
+let setPartner = null;
+function setSuggestions() {
+  const named = COLORS.find(([, h]) => h === state.color)?.[0];
+  const names = named ? MATCHES[named] : (isLight(state.color) ? ['black', 'navy', 'charcoal', 'grey'] : ['grey', 'sand', 'white', 'black']);
+  const list = names.map(n => COLORS.find(([k]) => k === n)[1]);
+  if (!named) list.unshift(state.color);   // a custom color can still be a full matching set
+  return list.slice(0, 4).map(hex => ({
+    hex, tag: hex === state.color ? 'same' : NEUTRALS.includes(COLORS.find(([, h]) => h === hex)?.[0]) ? 'classic' : 'bold',
+  }));
+}
+// A little outfit drawing: the top over the pants, in the two colors.
+function outfitSvg(top, bottom, shorts) {
+  const edge = c => isLight(c) ? ' stroke="#00000033" stroke-width="1"' : '';
+  const legs = shorts ? 'M16 48 H44 L46 70 H33 L30 58 L27 70 H14Z' : 'M16 48 H44 L46 88 H34 L30 60 L26 88 H14Z';
+  return `<svg viewBox="0 0 60 92"><path d="${legs}" fill="${bottom}"${edge(bottom)}/>`
+    + `<path d="M14 10 L24 5 Q30 10 36 5 L46 10 L57 32 L48 36 L46 28 V48 H14 V28 L12 36 L3 32Z" fill="${top}"${edge(top)}/></svg>`;
+}
+function renderSet() {
+  const kind = styleOf(state.product).kind === 'pants' ? 'pants' : 'top';
+  const partners = SET_PARTNERS[kind];
+  if (!partners.includes(setPartner)) setPartner = state.set?.product || partners[0];
+  $('#setHint').textContent = T(kind === 'top' ? 'set.hintTop' : 'set.hintPants', { product: T('product.' + state.product), color: colorName(state.color) });
+  $('#setProducts').innerHTML = '';
+  for (const p of partners) {
+    const b = document.createElement('button');
+    b.textContent = T('product.' + p);
+    b.classList.toggle('on', p === setPartner);
+    b.onclick = () => { setPartner = p; if (state.set) state.set.product = p; renderSet(); updateSummary(); };
+    $('#setProducts').append(b);
+  }
+  $('#setGrid').innerHTML = '';
+  for (const { hex, tag } of setSuggestions()) {
+    const b = document.createElement('button');
+    b.innerHTML = (kind === 'top' ? outfitSvg(state.color, hex, setPartner === 'shorts') : outfitSvg(hex, state.color, state.product === 'shorts'))
+      + `<b>${colorName(hex)}</b><span>${T('set.tag.' + tag)}</span>`;
+    b.classList.toggle('on', state.set?.color === hex && state.set?.product === setPartner);
+    b.onclick = () => {
+      const on = state.set?.color === hex && state.set?.product === setPartner;
+      state.set = on ? null : { product: setPartner, color: hex };
+      renderSet(); updateSummary();
+    };
+    $('#setGrid').append(b);
+  }
+  $('#setChosen').hidden = !state.set;
+  if (state.set) $('#setChosen span').textContent = T('set.added', { item: setLabel(), price: money(PRODUCTS[state.set.product].price) });
+}
+const setLabel = () => state.set && `${T('product.' + state.set.product)} ${colorName(state.set.color)}`;
+$('#setRemove').onclick = () => { state.set = null; renderSet(); updateSummary(); };
 function colorLabel() {
   const named = COLORS.find(([, hex]) => hex === state.color);
   return named ? `${T('color.' + named[0])} (\u200e${state.color})` : '\u200e' + state.color;
@@ -1242,10 +1325,13 @@ function quote() {
   const sides = ['front', 'back'].filter(s => ready ? ready[s] : editors[s].getObjects().length);
   const pcs = Object.values(state.qty).reduce((a, b) => a + b, 0);
   const unit = PRODUCTS[state.product].price + sides.reduce((a, s) => a + SHOP.printPrices[s], 0);
-  const subtotal = unit * pcs + state.qty['2XL'] * SHOP.xxlSurcharge;
+  // The matching piece comes plain, in the same sizes and quantities.
+  const setUnit = state.set ? PRODUCTS[state.set.product].price : 0;
+  const setSub = state.set ? setUnit * pcs + state.qty['2XL'] * SHOP.xxlSurcharge : 0;
+  const subtotal = unit * pcs + state.qty['2XL'] * SHOP.xxlSurcharge + setSub;
   const discRate = SHOP.bulkDiscounts.find(([min]) => pcs >= min)?.[1] || 0;
   const discount = subtotal * discRate;
-  return { sides, pcs, unit, subtotal, discRate, discount, total: subtotal - discount };
+  return { sides, pcs, unit, setUnit, setSub, subtotal, discRate, discount, total: subtotal - discount };
 }
 const sidesLabel = sides => T('sides.' + (sides.length === 2 ? 'both' : sides[0] || 'none'));
 // Every part of the price on its own line: the piece (before/after the launch offer), each print side, the
@@ -1253,7 +1339,8 @@ const sidesLabel = sides => T('sides.' + (sides.length === 2 ? 'both' : sides[0]
 function summaryHTML(q) {
   const [minPcs, minRate] = SHOP.bulkDiscounts[SHOP.bulkDiscounts.length - 1] || [10, 0.1];
   const p = PRODUCTS[state.product], xxl = state.qty['2XL'] * SHOP.xxlSurcharge;
-  const full = (p.was + q.sides.reduce((a, s) => a + SHOP.printPrices[s], 0)) * q.pcs + xxl;
+  const sp = state.set && PRODUCTS[state.set.product];
+  const full = (p.was + q.sides.reduce((a, s) => a + SHOP.printPrices[s], 0)) * q.pcs + xxl + (sp ? sp.was * q.pcs + xxl : 0);
   const row = (k, v, cls = '') => `<div class="${cls}"><span>${k}</span><span>${v}</span></div>`;
   return [
     OFFER && `<div class="offer"><span>${T('offer.line', { off: money(OFFER.off), date: i18n.date(OFFER.until) })}</span></div>`,
@@ -1262,6 +1349,8 @@ function summaryHTML(q) {
     row(T('sum.unit'), money(q.unit), 'sub'),
     row(T('sum.pieces'), '× ' + i18n.num(q.pcs)),
     xxl && row(T('sum.xxl'), '+ ' + money(xxl)),
+    sp && row(T('sum.set', { item: setLabel() }), `+ ${OFFER ? `<s>${money(sp.was)}</s> ` : ''}${money(q.setUnit)} × ${i18n.num(q.pcs)}`),
+    sp && xxl && row(T('sum.xxl'), '+ ' + money(xxl)),
     q.discRate ? row(T('sum.bulk', { rate: pct(q.discRate * 100) }), '− ' + money(q.discount), 'save')
                : row(T('sum.bulkLabel'), T('sum.bulkHint', { rate: pct(minRate * 100), n: i18n.num(minPcs) })),
     row(T('sum.total'), (full > q.total + 0.005 ? `<s>${money(full)}</s> ` : '') + `<b>${money(q.total)}</b>`, 'total'),
@@ -1363,6 +1452,7 @@ function orderMessage(order, attached) {
     hasStrings() && `${T('msg.strings')}: ${stringLabel()}`,
     `${T('msg.sizes')}: ${sizes}`,
     `${T('msg.print')}: ${sidesLabel(q.sides)}`,
+    state.set && `${T('msg.set')}: ${setLabel()} (‎${state.set.color}) ${T('msg.setPlain')}`,
     order.ready && T('msg.ready'),
     `${T('msg.total')}: ${Math.round(q.total * 100) / 100} EGP`,
     '—',
@@ -1401,7 +1491,8 @@ async function orderSheet(order) {
   const rows = [
     [T('msg.product'), T('product.' + state.product)], [T('msg.color'), colorLabel()],
     ...(hasStrings() ? [[T('msg.strings'), stringLabel()]] : []), [T('msg.sizes'), sizes],
-    [T('msg.print'), sidesLabel(q.sides)], [T('msg.total'), money(q.total)], [T('msg.name'), order.name],
+    [T('msg.print'), sidesLabel(q.sides)], ...(state.set ? [[T('msg.set'), `${setLabel()} ${T('msg.setPlain')}`]] : []),
+    [T('msg.total'), money(q.total)], [T('msg.name'), order.name],
     [T('msg.phone'), order.phone], [T('msg.city'), order.city], [T('msg.address'), order.address],
   ];
   if (order.notes) rows.push([T('msg.notes'), order.notes]);
@@ -1456,6 +1547,7 @@ function orderData(order) {
     strings: hasStrings() ? stringLabel() : null, qty: Object.fromEntries(SIZES.filter(s => state.qty[s]).map(s => [s, state.qty[s]])),
     sides: q.sides.filter(s => order.prints[s]).map(s => ({ side: s, label: T('side.' + s) })), print: sidesLabel(q.sides), ready: !!order.ready,
     pcs: q.pcs, unit: q.unit, xxl: state.qty['2XL'] || 0, xxlPrice: SHOP.xxlSurcharge, discRate: q.discRate, discount: q.discount, total: q.total,
+    set: state.set && { item: setLabel(), color: state.set.color, unit: q.setUnit },
     name: order.name, phone: order.phone, city: order.city, address: order.address, notes: order.notes,
   };
 }
@@ -1567,6 +1659,7 @@ i18n.onChange(() => {
   fillFontSelects();
   $('#paintToggle').textContent = T($('#paintToggle').dataset.i18n || 'paint.start');
   renderProducts();
+  renderSet();
   renderLogos();
   labelSwatches();
   updateSummary();
