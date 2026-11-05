@@ -78,6 +78,12 @@
   .sel-bar .del { margin-inline-start: auto; flex: none; align-self: flex-start; background: var(--danger); border-color: var(--danger); color: #fff; font-weight: 700; }
   .logo-grid img, .logo-grid svg { width: 100%; height: 100%; display: block; }
   .logo-grid button { color: var(--text); }
+  .logo-preview { position: fixed; z-index: 50; width: 220px; height: 220px; padding: 22px; border-radius: 16px; background: var(--pv-bg, #fff);
+    box-shadow: 0 12px 40px rgba(0,0,0,.28), 0 0 0 1px rgba(0,0,0,.06); pointer-events: none; }
+  .logo-preview svg { width: 100%; height: 100%; display: block; }
+  .logo-preview svg [fill="#fffffe"] { fill: var(--pv-bg); }
+  .logo-preview svg [stroke="#fffffe"] { stroke: var(--pv-bg); }
+  @media (hover: none) { .logo-preview { display: none; } }
   .logo-grid button svg [fill="#fffffe"] { fill: var(--panel); }
   .logo-grid button svg [stroke="#fffffe"] { stroke: var(--panel); }
   .row { display: flex; gap: 8px; align-items: center; }
@@ -205,6 +211,7 @@
       <h3 data-i18n="logos.title">Ready-made logos</h3>
       <div class="chips" id="logoCats"></div>
       <div class="logo-grid" id="logoGrid"></div>
+      <div class="logo-preview" id="logoPreview" hidden></div>
       <p class="hint" data-i18n="logos.hint"></p>
       <h3 style="margin:14px 0 6px" data-i18n="mono.title">Your letters, CMG style</h3>
       <div class="row"><input type="text" id="monoInput" maxlength="4" dir="auto" data-i18n-ph="mono.ph"><button class="btn primary" id="monoAdd" style="flex:none" data-i18n="mono.add"></button></div>
@@ -899,12 +906,31 @@ function renderLogos() {
   for (const id of logoSets.find(s => s.cat === logoCat)?.items || []) {
     const b = document.createElement('button');
     b.title = id;
-    b.onclick = () => addLogo(id);
+    b.onclick = () => { hideLogoPreview(); addLogo(id); };
+    b.onmouseenter = () => showLogoPreview(b, id);
+    b.onmouseleave = hideLogoPreview;
     $('#logoGrid').append(b);
     // Drawn inline, not as <img>, so lettering logos show in their own web font (calligraphy, Lalezar…).
     logoSvg(id).then(svg => { b.innerHTML = svg; }).catch(() => { b.innerHTML = `<img alt="" src="logos/${id}.svg">`; });
   }
 }
+// Hovering a logo shows it large, on the garment's own color, beside the list.
+async function showLogoPreview(b, id) {
+  const pv = $('#logoPreview'), svg = await logoSvg(id).catch(() => null);
+  if (!svg || !b.matches(':hover')) return;
+  pv.innerHTML = svg;
+  pv.style.setProperty('--pv-bg', state.color);
+  pv.style.color = isLight(state.color) ? '#111111' : '#ffffff';
+  const r = b.getBoundingClientRect(), size = 220, gap = 12;
+  const rtl = document.dir === 'rtl' || document.documentElement.dir === 'rtl';
+  let x = rtl ? r.left - size - gap : r.right + gap;
+  if (x < 8 || x + size > innerWidth - 8) x = Math.min(Math.max(8, r.left + r.width / 2 - size / 2), innerWidth - size - 8);
+  const y = Math.min(Math.max(8, r.top + r.height / 2 - size / 2), innerHeight - size - 8);
+  Object.assign(pv.style, { left: x + 'px', top: y + 'px' });
+  pv.hidden = false;
+}
+function hideLogoPreview() { $('#logoPreview').hidden = true; }
+document.addEventListener('scroll', hideLogoPreview, true);   // any panel scrolling moves the logo away
 const logoCache = new Map();
 const logoSvg = id => {
   if (!logoCache.has(id)) logoCache.set(id, fetch(`logos/${id}.svg`).then(r => r.ok ? r.text() : Promise.reject()));
