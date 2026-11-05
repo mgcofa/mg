@@ -11,7 +11,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
-<script src="i18n.js?v=25"></script>
+<script src="i18n.js?v=26"></script>
 <script>document.documentElement.lang = 'ar'; document.documentElement.dir = 'rtl';</script>
 <style>
   :root { --bg: #f4f4f5; --panel: #fff; --line: #e4e4e7; --text: #18181b; --muted: #71717a; --accent: #4f46e5; --accent-soft: #eef2ff; --wa: #25d366; }
@@ -283,7 +283,7 @@ const LABEL_KEYS = {
 const LABELS = { ar: {}, en: {} };
 let SHOP = null;
 (async () => {
-  SHOP = (await import('./config.js?v=25')).default;
+  SHOP = (await import('./config.js?v=26')).default;
   const title = document.title, was = i18n.lang;
   for (const lang of ['ar', 'en']) {
     i18n.setLang(lang);
@@ -296,7 +296,8 @@ let SHOP = null;
 async function renderPage(pdf, n, scale, bg) {
   const page = await pdf.getPage(n), vp = page.getViewport({ scale });
   const c = Object.assign(document.createElement('canvas'), { width: Math.round(vp.width), height: Math.round(vp.height) });
-  await page.render({ canvasContext: c.getContext('2d'), viewport: vp, background: bg || 'rgba(0,0,0,0)' }).promise;
+  // "print" renders in one go, without waiting for screen repaints, so it also finishes in a background tab.
+  await page.render({ canvasContext: c.getContext('2d'), viewport: vp, background: bg || 'rgba(0,0,0,0)', intent: 'print' }).promise;
   return c;
 }
 
@@ -329,6 +330,11 @@ function fill() {
   if (d.product) {
     addLine(`${d.product} - ${d.print}${sizes ? ` (${sizes.replace(/ {3}/g, '، ')})` : ''}`, d.pcs, d.unit);
     if (d.set) addLine(`${d.set.item} (طقم، سادة)`, d.pcs, d.set.unit);
+    if (d.partner) {
+      const ps = Object.entries(d.partner.qty).map(([s, n]) => `${s}×${n}`).join('، ');
+      addLine(`${d.product} - ${d.partner.label} ${d.partner.color} - ${d.partner.print} (${ps})`, d.partner.pcs, d.partner.unit);
+      if (d.partner.xxl) addLine('زيادة مقاس 2XL', d.partner.xxl, d.xxlPrice);
+    }
     if (d.xxl) addLine('زيادة مقاس 2XL', d.xxl * (d.set ? 2 : 1), d.xxlPrice);
   } else addLine('', 1, 0);
   $('#sizeList').innerHTML = src.sides.map(s => `<li><b>${s.label}:</b> التصميم ${s.ink ? `${cm(s.ink.cm[0])} × ${cm(s.ink.cm[1])} سم` : 'فاضي'}
