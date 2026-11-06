@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>CMG | الإحصائيات</title>
+<link rel="icon" type="image/svg+xml" href="brand/mark.svg">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;800&family=Cairo:wght@400;600;700;900&family=Lalezar&display=swap" rel="stylesheet">
+<style>
+  :root { --indigo: #4f46e5; --purple: #9333ea; --ink: #18181b; --paper: #f4f4f5; --line: #e4e4e7; --muted: #71717a; --green: #16a34a; --amber: #d97706; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Cairo, system-ui, sans-serif; background: var(--paper); color: var(--ink); }
+  header { display: flex; align-items: center; gap: 14px; padding: 14px 20px; background: #fff; border-bottom: 1px solid var(--line); }
+  header img { height: 36px; }
+  header h1 { font-size: 18px; margin: 0; }
+  header .grow { flex: 1; }
+  .btn { font: inherit; font-weight: 700; font-size: 14px; border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 7px 14px; cursor: pointer; color: var(--ink); text-decoration: none; }
+  .btn.primary { background: var(--indigo); color: #fff; border-color: var(--indigo); }
+  main { max-width: 1080px; margin: 0 auto; padding: 20px 16px 60px; }
+  h2 { font-size: 18px; margin: 28px 0 12px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+  .card .k { color: var(--muted); font-size: 14px; font-weight: 600; }
+  .card .v { font-family: Inter, sans-serif; font-weight: 800; font-size: 34px; margin-top: 4px; direction: ltr; text-align: right; }
+  .card .s { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .card.hl { background: linear-gradient(135deg, var(--indigo), var(--purple)); color: #fff; border: 0; }
+  .card.hl .k, .card.hl .s { color: rgba(255,255,255,0.85); }
+  .chart { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+  .legend { display: flex; gap: 16px; font-size: 13px; color: var(--muted); margin-bottom: 8px; flex-wrap: wrap; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-inline-end: 6px; vertical-align: -1px; }
+  svg { width: 100%; height: auto; display: block; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .bars .row { display: grid; grid-template-columns: 90px 1fr 48px; gap: 10px; align-items: center; margin: 8px 0; font-size: 14px; }
+  .bars .track { background: #f1f1f4; border-radius: 6px; height: 14px; overflow: hidden; }
+  .bars .fill { height: 100%; background: linear-gradient(90deg, var(--indigo), var(--purple)); border-radius: 6px; }
+  .bars .n { font-family: Inter, sans-serif; font-weight: 800; text-align: left; direction: ltr; }
+  .note { color: var(--muted); font-size: 13px; line-height: 1.8; margin-top: 24px; }
+  .status { color: var(--muted); font-size: 13px; }
+  @media (max-width: 700px) { .two { grid-template-columns: 1fr; } .card .v { font-size: 28px; } }
+</style>
+</head>
+<body>
+<header>
+  <img src="brand/logo.svg" alt="CMG">
+  <h1>إحصائيات الموقع</h1>
+  <div class="grow"></div>
+  <span class="status" id="status"></span>
+  <button class="btn primary" id="refresh">تحديث</button>
+</header>
+<main>
+  <h2>النهارده</h2>
+  <div class="cards">
+    <div class="card hl"><div class="k">ناس دخلت</div><div class="v" id="tPeople">–</div><div class="s">كل جهاز بيتحسب مرة في اليوم</div></div>
+    <div class="card"><div class="k">زيارات</div><div class="v" id="tVisits">–</div><div class="s">كل مرة الصفحة اتفتحت</div></div>
+    <div class="card"><div class="k">زوار جداد</div><div class="v" id="tNew">–</div><div class="s">أول مرة يدخلوا الموقع</div></div>
+    <div class="card"><div class="k">طلبات</div><div class="v" id="tOrders">–</div><div class="s" id="tConv">&nbsp;</div></div>
+  </div>
+
+  <h2>من الأول</h2>
+  <div class="cards">
+    <div class="card"><div class="k">كل الزوار</div><div class="v" id="aNew">–</div><div class="s">أجهزة مختلفة دخلت الموقع</div></div>
+    <div class="card"><div class="k">كل الزيارات</div><div class="v" id="aVisits">–</div></div>
+    <div class="card"><div class="k">كل الطلبات</div><div class="v" id="aOrders">–</div><div class="s" id="aConv">&nbsp;</div></div>
+  </div>
+
+  <h2>آخر ١٤ يوم</h2>
+  <div class="chart">
+    <div class="legend"><span><i style="background:#c7d2fe"></i>زيارات</span><span><i style="background:#4f46e5"></i>ناس دخلت</span><span><i style="background:#16a34a"></i>طلبات</span></div>
+    <svg id="days" viewBox="0 0 1000 300" role="img" aria-label="الزيارات والطلبات في آخر ١٤ يوم"></svg>
+  </div>
+
+  <div class="two">
+    <div>
+      <h2>جايين منين</h2>
+      <div class="card bars" id="sources"></div>
+    </div>
+    <div>
+      <h2>من أنهي جهاز</h2>
+      <div class="card bars" id="devices"></div>
+    </div>
+  </div>
+
+  <p class="note">
+    الأرقام بتتحدث أول بأول، ودوس «تحديث» عشان تشوف آخر أرقام. الأيام محسوبة بتوقيت القاهرة.<br>
+    الجهاز اللي فاتح الصفحة دي مش بيتحسب في الزيارات، عشان زياراتك انت ماتلخبطش الأرقام. العدّ بدأ من يوم ما الإحصائيات اتضافت للموقع.<br>
+    «جايين منين» بيتحسب من أول زيارة لكل زائر جديد. لو حطيت لينك الموقع في إعلان فيسبوك، فيسبوك بيعلّمه لوحده.
+  </p>
+</main>
+<script type="module">
+import { COUNTER_NS, dayKey } from './counter.js?v=37';
+const $ = s => document.querySelector(s);
+const BASE = 'https://abacus.jasoncameron.dev/get/' + COUNTER_NS + '/';
+try { localStorage.setItem('cmg-nocount', '1'); } catch {}
+
+// The counter service allows ~30 requests per 10 s: ask a few at a time and wait when it says slow down.
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function get(key, tries = 4) {
+  const r = await fetch(BASE + key, { cache: 'no-store' });
+  if (r.status === 404) return 0;
+  if (r.status === 429 && tries) { await sleep(10500); return get(key, tries - 1); }
+  if (!r.ok) throw new Error(key + ' ' + r.status);
+  return (await r.json()).value || 0;
+}
+async function getAll(keys) {
+  const out = {}, queue = [...keys];
+  const worker = async () => { while (queue.length) { const k = queue.shift(); out[k] = await get(k); } };
+  await Promise.all([worker(), worker(), worker()]);
+  return out;
+}
+const fmt = n => n.toLocaleString('ar-EG');
+const pct = (a, b) => (b ? `${fmt(Math.round(a / b * 1000) / 10)}٪ من الناس طلبوا` : '&nbsp;');
+const days = Array.from({ length: 14 }, (_, i) => new Date(Date.now() - (13 - i) * 864e5));
+const SOURCES = [['facebook', 'فيسبوك'], ['instagram', 'انستجرام'], ['whatsapp', 'واتساب'], ['tiktok', 'تيك توك'], ['google', 'جوجل'], ['direct', 'لينك مباشر'], ['other', 'مواقع تانية']];
+const DEVICES = [['phone', 'موبايل'], ['computer', 'كمبيوتر']];
+
+function bars(el, rows) {
+  const max = Math.max(1, ...rows.map(r => r[1]));
+  el.innerHTML = rows.map(([label, n]) => `<div class="row"><span>${label}</span><div class="track"><div class="fill" style="width:${n / max * 100}%"></div></div><span class="n">${fmt(n)}</span></div>`).join('');
+}
+function chart(data) {
+  const W = 1000, H = 300, pad = 34, bw = (W - pad * 2) / days.length;
+  const max = Math.max(1, ...data.map(d => d.visits));
+  const y = v => H - 40 - (v / max) * (H - 80);
+  let s = '';
+  for (let i = 0; i <= 4; i++) { const v = Math.round(max * i / 4), yy = y(v); s += `<line x1="${pad}" x2="${W - pad}" y1="${yy}" y2="${yy}" stroke="#eee"/><text x="${W - pad + 6}" y="${yy + 4}" font-size="12" fill="#a1a1aa" font-family="Inter">${v}</text>`; }
+  data.forEach((d, i) => {
+    const x = W - pad - (i + 1) * bw + bw * 0.15, w = bw * 0.7;           // newest day on the left, like reading RTL
+    s += `<rect x="${x}" y="${y(d.visits)}" width="${w}" height="${H - 40 - y(d.visits)}" rx="4" fill="#c7d2fe"><title>${d.label}: ${d.visits} زيارة</title></rect>`;
+    s += `<rect x="${x + w * 0.2}" y="${y(d.people)}" width="${w * 0.6}" height="${H - 40 - y(d.people)}" rx="3" fill="#4f46e5"><title>${d.label}: ${d.people} شخص</title></rect>`;
+    if (d.orders) s += `<circle cx="${x + w / 2}" cy="${y(d.orders)}" r="7" fill="#16a34a"><title>${d.label}: ${d.orders} طلب</title></circle>`;
+    s += `<text x="${x + w / 2}" y="${H - 16}" font-size="13" fill="#71717a" text-anchor="middle" font-family="Cairo">${d.short}</text>`;
+  });
+  $('#days').innerHTML = s;
+}
+
+async function load() {
+  $('#refresh').disabled = true; $('#status').textContent = 'جارٍ التحميل…';
+  try {
+    const d = dayKey();
+    const top = await getAll([`people-${d}`, `visits-${d}`, `new-${d}`, `orders-${d}`, 'visits', 'new', 'orders']);
+    $('#tPeople').textContent = fmt(top[`people-${d}`]); $('#tVisits').textContent = fmt(top[`visits-${d}`]);
+    $('#tNew').textContent = fmt(top[`new-${d}`]); $('#tOrders').textContent = fmt(top[`orders-${d}`]);
+    $('#tConv').innerHTML = pct(top[`orders-${d}`], top[`people-${d}`]);
+    $('#aNew').textContent = fmt(top.new); $('#aVisits').textContent = fmt(top.visits); $('#aOrders').textContent = fmt(top.orders);
+    $('#aConv').innerHTML = pct(top.orders, top.new);
+    const mix = await getAll([...SOURCES.map(([k]) => 'src-' + k), ...DEVICES.map(([k]) => 'dev-' + k)]);
+    bars($('#sources'), SOURCES.map(([k, l]) => [l, mix['src-' + k]]).sort((a, b) => b[1] - a[1]));
+    bars($('#devices'), DEVICES.map(([k, l]) => [l, mix['dev-' + k]]));
+    const keys = days.flatMap(dt => ['visits', 'people', 'orders'].map(k => `${k}-${dayKey(dt)}`));
+    const hist = await getAll(keys);
+    chart(days.map(dt => {
+      const k = dayKey(dt);
+      return { visits: hist['visits-' + k], people: hist['people-' + k], orders: hist['orders-' + k],
+        label: dt.toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Africa/Cairo' }),
+        short: dt.toLocaleDateString('ar-EG', { day: 'numeric', month: 'numeric', timeZone: 'Africa/Cairo' }) };
+    }));
+    $('#status').textContent = 'آخر تحديث ' + new Date().toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' });
+  } catch (e) {
+    console.error(e); $('#status').textContent = 'ماقدرناش نجيب الأرقام، جرّب تاني';
+  } finally { $('#refresh').disabled = false; }
+}
+$('#refresh').onclick = load;
+load();
+</script>
+</body>
+</html>
