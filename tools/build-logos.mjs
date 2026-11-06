@@ -328,6 +328,18 @@ Object.assign(CUSTOM, {
       + '<path fill="#ffffff" stroke="currentColor" stroke-width="1.4" d="M34 84 C26 84 24 74 31 72 C30 64 40 60 45 66 C48 58 60 58 62 66 C68 62 76 68 72 74 C78 76 76 84 70 84Z"/>'
       + '<circle cx="44" cy="74" r="3.2" fill="#1d1d3a"/><circle cx="57" cy="74" r="3.2" fill="#1d1d3a"/><circle cx="45" cy="73" r="1" fill="#fff"/><circle cx="58" cy="73" r="1" fill="#fff"/>'
       + '<ellipse cx="39" cy="79" rx="2.6" ry="1.6" fill="#f6a5b8"/><ellipse cx="62" cy="79" rx="2.6" ry="1.6" fill="#f6a5b8"/><path d="M48 79 Q50.5 81.5 53 79" fill="none" stroke="#1d1d3a" stroke-width="1"/>',
+    // Varsity name over a little original girl with buns, est. and year on each side.
+    sunny: ARC('SUNNY', 50, 122, 84, 21, 'Abril Fatface', 10.5, ' fill="#8ec5ea" stroke="#2f6f9e" stroke-width="0.8"')
+      + tx(12, 62, 8, 'Bebas Neue', 'EST.', ' fill="#8ec5ea" letter-spacing="1"') + tx(74, 62, 8, 'Bebas Neue', '1998', ' fill="#8ec5ea" letter-spacing="1"')
+      + '<circle cx="36" cy="50" r="7" fill="#f2c94c" stroke="#1d1d1b" stroke-width="1"/><circle cx="64" cy="50" r="7" fill="#f2c94c" stroke="#1d1d1b" stroke-width="1"/>'
+      + '<path fill="#5b8fd1" stroke="#1d1d1b" stroke-width="1" d="M40 78 L60 78 L64 92 L36 92Z"/>'
+      + '<circle cx="50" cy="64" r="15" fill="#ffe2cf" stroke="#1d1d1b" stroke-width="1.1"/>'
+      + '<path fill="#f2c94c" stroke="#1d1d1b" stroke-width="1" d="M35.5 61 C36 50 44 46 50 46 C56 46 64 50 64.5 61 C60 55 54 53 50 56 C46 53 40 55 35.5 61Z"/>'
+      + '<ellipse cx="44" cy="66" rx="3.4" ry="4.2" fill="#1d1d3a"/><ellipse cx="56" cy="66" rx="3.4" ry="4.2" fill="#1d1d3a"/>'
+      + '<circle cx="45" cy="64.6" r="1.2" fill="#fff"/><circle cx="57" cy="64.6" r="1.2" fill="#fff"/>'
+      + '<ellipse cx="40" cy="71" rx="2.4" ry="1.4" fill="#f6a5b8"/><ellipse cx="60" cy="71" rx="2.4" ry="1.4" fill="#f6a5b8"/>'
+      + '<path d="M47.5 72 Q50 74.5 52.5 72" fill="none" stroke="#1d1d1b" stroke-width="1"/>'
+      + '<path d="M44 92 V97 M56 92 V97" stroke="#1d1d1b" stroke-width="2.4" stroke-linecap="round"/>',
     surfClub: t(26, 14, 'Bebas Neue', 'ALEXANDRIA', ' letter-spacing="3"')
       + '<circle cx="50" cy="52" r="20" fill="none" stroke="currentColor" stroke-width="2"/>'
       + '<path fill="currentColor" d="M31 56 C38 50 44 58 50 54 C56 50 62 58 69 54 C69 64 60 72 50 72 C40 72 32 66 31 56Z"/><circle cx="50" cy="46" r="7" fill="currentColor"/>'
