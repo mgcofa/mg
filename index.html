@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="brand/mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cairo:wght@400;600;700;900&family=Tajawal:wght@500;800&family=Lalezar&family=Reem+Kufi:wght@700&family=Amiri:wght@700&family=Bebas+Neue&family=Oswald:wght@600&family=Pacifico&family=Playfair+Display:wght@700&family=Permanent+Marker&family=Anton&family=Montserrat:wght@800&family=Bangers&family=Lobster&family=Dancing+Script:wght@700&family=Righteous&family=Russo+One&family=Black+Ops+One&family=Abril+Fatface&family=Bungee&family=Great+Vibes&family=Caveat:wght@700&family=Changa:wght@700&family=El+Messiri:wght@700&family=Aref+Ruqaa:wght@700&family=Rakkas&family=Marhey:wght@700&family=Lemonada:wght@700&family=Kufam:wght@700&family=Jomhuria&family=Mirza:wght@700&family=Vibes&display=swap" rel="stylesheet">
-<script src="i18n.js?v=35"></script>
+<script src="i18n.js?v=36"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <!-- Import maps need Safari 16.4+; this polyfill makes older iPhones load the 3D modules too. -->
@@ -248,6 +248,12 @@
         <h3 style="margin-bottom:8px" data-i18n="color.rib">Cuffs &amp; hem color</h3>
         <div class="row" style="gap:10px"><div class="qc" id="ribSwatches"></div><input type="color" id="ribCustom" value="#111318" data-i18n-title="rib.custom"></div>
       </div>
+      <div id="stripeRow" style="margin-top:14px">
+        <h3 style="margin-bottom:8px" data-i18n="color.stripes">Sport stripes</h3>
+        <div class="chips" id="stripeCount"><button data-n="0" data-i18n="stripes.n0"></button><button data-n="1" data-i18n="stripes.n1"></button><button data-n="2" data-i18n="stripes.n2"></button></div>
+        <div class="row" style="gap:10px;margin-top:8px" id="stripeColorRow"><div class="qc" id="stripeSwatches"></div><input type="color" id="stripeCustom" value="#f2f2ef" data-i18n-title="rib.custom"></div>
+        <p class="hint" id="stripeHint" style="margin:6px 0 0"></p>
+      </div>
     </div>
 
     <div class="sec" id="setSec">
@@ -459,8 +465,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { EW, EH, STYLES, CATEGORIES, styleOf, buildGarment, printAreas, pocketOutlines } from './garment.js?v=35';
-import SHOP from './config.js?v=35';
+import { EW, EH, STYLES, CATEGORIES, styleOf, buildGarment, printAreas, pocketOutlines } from './garment.js?v=36';
+import SHOP from './config.js?v=36';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -507,7 +513,7 @@ const PRODUCTS = Object.fromEntries(Object.keys(STYLES).map(p => [p, {
 }]));
 
 let pieceBusy = false;   // true while switching between his and hers pieces
-const state = { product: 'hoodie', color: '#1f2a44', strings: 'white', stringCustom: '#e11d48', side: 'front', qty: { S: 0, M: 1, L: 0, XL: 0, '2XL': 0 }, set: null, rib: null, fit: 'men', unit: 'cm', custom: null };
+const state = { product: 'hoodie', color: '#1f2a44', strings: 'white', stringCustom: '#e11d48', side: 'front', qty: { S: 0, M: 1, L: 0, XL: 0, '2XL': 0 }, set: null, rib: null, stripes: { n: 0, color: '#f2f2ef' }, fit: 'men', unit: 'cm', custom: null };
 
 // ---------- 2D editors (Fabric.js) ----------
 Object.assign(fabric.Object.prototype, {
@@ -620,6 +626,7 @@ function compose() {
   for (const z of EXTRA_ZONES) {
     const c = zoneCanvas[z], g = c.getContext('2d');
     g.fillStyle = state.color; g.fillRect(0, 0, c.width, c.height);
+    if (state.stripes.n && z.startsWith('sleeve') && styleOf(state.product).kind === 'top') drawSleeveStripes(g, c);
     if (sideCache[z] && zones.includes(z)) g.drawImage(sideCache[z], 0, 0, c.width, c.height);
     zoneTex[z].needsUpdate = true;
   }
@@ -639,6 +646,16 @@ function drawSeams() {
     for (const dx of [-7, 7]) { tctx.beginPath(); tctx.moveTo(x + dx, 0); tctx.lineTo(x + dx, 1024); tctx.stroke(); }
   }
   tctx.restore();
+}
+// Sport stripes: one wide stripe (3 cm) or two narrow ones (1.5 cm, 1 cm apart) down the outside of each sleeve,
+// or down the outer side seam of each leg. Texture px per mm comes from the print units (1 unit = 1.6 mm).
+function stripeBands(center, pxPerMm) {
+  const n = state.stripes.n, w = (n === 1 ? 30 : 15) * pxPerMm, gap = 10 * pxPerMm, total = n * w + (n - 1) * gap;
+  return Array.from({ length: n }, (_, i) => [center - total / 2 + i * (w + gap), w]);
+}
+function drawSleeveStripes(g, c) {   // the sleeve canvas runs along the arm top to bottom; its middle is the outer side
+  g.fillStyle = state.stripes.color;
+  for (const [x, w] of stripeBands(c.width / 2, c.width / (ZONE_SIZE.sleeveR[0] * PRINT_MM_PER_UNIT))) g.fillRect(x, 0, w, c.height);
 }
 // Pocket panels and openings (front side), from canvas px to texture px.
 function drawPockets() {
@@ -826,6 +843,65 @@ function shapeLegs(root, product, fit) {
     o.geometry.computeBoundingBox(); o.geometry.computeBoundingSphere();
   }
 }
+// Leg stripes on pants: the pants' texture can't carry them (the lower legs read one clamped row of it), so each
+// vertex of the print mesh gets its distance in mm from the leg's outer line, and the shader paints the stripes
+// from that. Real heights waist to hem (mm) turn model units into mm.
+const PANTS_MM = { joggers: 1000, sweatpants: 1050, shorts: 520 };
+function addSeamDistance(root, product, meshes) {
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root), H = box.max.y - box.min.y, cx = (box.min.x + box.max.x) / 2;
+  const mmPer = (PANTS_MM[product] || 1000) / H, N = 48, v = new THREE.Vector3(), n = new THREE.Vector3();
+  const bin = y => Math.max(0, Math.min(N - 1, Math.floor((box.max.y - y) / H * N)));
+  // Per height band and side: the outermost point (x and z) of the leg or hip.
+  const xs = [new Float64Array(N).fill(-1e9), new Float64Array(N).fill(-1e9)], zs = [new Float64Array(N), new Float64Array(N)];
+  for (const o of meshes) {
+    const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+      const s = v.x < cx ? 0 : 1, b = bin(v.y), out = s ? v.x - cx : cx - v.x;
+      if (out > xs[s][b]) { xs[s][b] = out; zs[s][b] = v.z; }
+    }
+  }
+  const smooth = a => a.map((_, b) => (a[Math.max(0, b - 1)] + a[b] + a[Math.min(N - 1, b + 1)]) / 3);
+  for (const s of [0, 1]) { zs[s] = smooth(smooth(Array.from(zs[s]))); xs[s] = smooth(Array.from(xs[s])); }
+  const at = (a, y) => { const f = Math.max(0, Math.min(N - 1, (box.max.y - y) / H * N - 0.5)), b = Math.floor(f), w = f - b; return a[b] * (1 - w) + a[Math.min(N - 1, b + 1)] * w; };
+  const nm = new THREE.Matrix3();
+  for (const o of meshes) {
+    const pos = o.geometry.attributes.position, nor = o.geometry.attributes.normal, d = new Float32Array(pos.count);
+    nm.getNormalMatrix(o.matrixWorld);
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+      n.fromBufferAttribute(nor, i).applyMatrix3(nm).normalize();
+      const s = v.x < cx ? 0 : 1, sign = s ? 1 : -1;
+      // Only the outward-facing side of each leg; the rest is far from any stripe.
+      const out = (v.x - cx) * sign;
+      d[i] = n.x * sign > 0.3 && out > at(xs[s], v.y) * 0.6 ? (v.z - at(zs[s], v.y)) * mmPer : 1e4;
+    }
+    o.geometry.setAttribute('seamDist', new THREE.BufferAttribute(d, 1));
+  }
+}
+function stripeShader(m, uniforms) {
+  m.customProgramCacheKey = () => 'legStripes';
+  m.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, uniforms);
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float seamDist;\nvarying float vSeam;')
+      .replace('#include <uv_vertex>', '#include <uv_vertex>\nvSeam = seamDist;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uStripeN;\nuniform vec3 uStripeColor;\nvarying float vSeam;')
+      .replace('#include <map_fragment>', `#include <map_fragment>
+      if (uStripeN > 0.5 && abs(vSeam) < 1000.0) {
+        float w = uStripeN < 1.5 ? 30.0 : 15.0, gap = 10.0, total = uStripeN * w + (uStripeN - 1.0) * gap;
+        float s = vSeam + total * 0.5, m = mod(s, w + gap), aa = max(fwidth(vSeam), 0.001);
+        float inb = (s > 0.0 && s < total) ? smoothstep(-aa, aa, m) * (1.0 - smoothstep(w - aa, w + aa, m)) : 0.0;
+        diffuseColor.rgb = mix(diffuseColor.rgb, uStripeColor, inb);
+      }`);
+  };
+}
+function applyLegStripes() {
+  const u = realModel?.userData.stripeU;
+  if (!u) return;
+  u.uStripeN.value = state.stripes.n;
+  u.uStripeColor.value.set(state.stripes.color);
+}
 // A fresh copy of a loaded model with our fabric materials; print meshes show printTex.
 function dressModel(gltf, product, printTex, zoneTexs = {}, fit = state.fit) {
   const root = gltf.scene.clone(true), prints = [];
@@ -863,6 +939,9 @@ function dressModel(gltf, product, printTex, zoneTexs = {}, fit = state.fit) {
     if (styleOf(product).kind === 'pants') {
       root.scale.multiply(new THREE.Vector3(0.9, product === 'sweatpants' ? 0.72 : 0.68, 0.9));   // wide-leg pants run a little longer
       shapeLegs(root, product, fit);
+      const u = root.userData.stripeU = { uStripeN: { value: 0 }, uStripeColor: { value: new THREE.Color() } };
+      addSeamDistance(root, product, prints);
+      for (const o of prints) stripeShader(o.material, u);
     }
   }
   else {
@@ -976,6 +1055,7 @@ async function loadProductModel() {
       if (state.product !== product) return;      // user switched product while loading
       const { root, prints } = dressModel(gltf, product, realPrintTex, zoneTex);
       realModel = root; printMeshes = prints;
+      applyLegStripes();
       garment.visible = false;
       scene.add(root);
     } catch (e) {
@@ -1374,7 +1454,7 @@ function capturePiece() {
     return [z, c];
   }));
   return {
-    color: state.color, rib: state.rib, qty: { ...state.qty }, custom: state.custom && structuredClone(state.custom), tex, zones,
+    color: state.color, rib: state.rib, stripes: { ...state.stripes }, qty: { ...state.qty }, custom: state.custom && structuredClone(state.custom), tex, zones,
     json: Object.fromEntries(ZONES.map(z => [z, editors[z].toJSON(['cutout'])])),
   };
 }
@@ -1382,8 +1462,9 @@ async function loadPiece(p) {
   for (const s of ZONES) await new Promise(ok => editors[s].loadFromJSON(p.json[s] || emptySide(), () => { editors[s].renderAll(); ok(); }));
   state.qty = { ...p.qty };
   state.rib = p.rib || null;
+  state.stripes = p.stripes ? { ...p.stripes } : { n: 0, color: '#f2f2ef' };
   state.custom = p.custom || null;
-  renderRib();
+  renderRib(); renderStripes();
   syncSizeInputs();
   setColor(p.color);
 }
@@ -1611,6 +1692,7 @@ const pantsInvolved = () => styleOf(state.product).kind === 'pants' || (state.se
 function renderFit() {
   $('#fitRow').hidden = !pantsInvolved();
   $$('#fitSeg button').forEach(b => b.classList.toggle('on', b.dataset.fit === state.fit));
+  if (typeof renderStripes === 'function' && $('#stripeHint')) renderStripes();
 }
 $$('#fitSeg button').forEach(b => b.onclick = () => {
   if (state.fit === b.dataset.fit) return;
@@ -1759,6 +1841,33 @@ function renderRib() {
   });
   $('#ribCustom').classList.toggle('on', !!state.rib && !COLORS.some(([, h]) => h === state.rib));
 }
+// Sport stripes: none, one or two, in any palette color or a custom one.
+const stripeLabel = (st = state.stripes) => `${T('stripes.n' + st.n)} – ${colorName(st.color)} (\u200e${st.color})`;
+for (const [name, hex] of COLORS) {
+  const s = document.createElement('button');
+  s.dataset.hex = hex; s.dataset.name = name; s.style.background = hex;
+  s.onclick = () => setStripes({ color: hex });
+  $('#stripeSwatches').append(s);
+}
+$$('#stripeCount button').forEach(b => b.onclick = () => setStripes({ n: +b.dataset.n }));
+$('#stripeCustom').oninput = e => setStripes({ color: e.target.value });
+function setStripes(patch) {
+  state.stripes = { ...state.stripes, ...patch };
+  // A stripe in the garment's own color wouldn't show: pick white, or black on light garments.
+  if (patch.n && state.stripes.color.toLowerCase() === state.color.toLowerCase()) state.stripes.color = isLight(state.color) ? '#111318' : '#f2f2ef';
+  renderStripes(); markAllDirty(); updateSummary();
+}
+function renderStripes() {
+  const st = state.stripes;
+  $$('#stripeCount button').forEach(b => b.classList.toggle('on', +b.dataset.n === st.n));
+  $$('#stripeSwatches button').forEach(b => { b.classList.toggle('on', b.dataset.hex === st.color); b.title = T('color.' + b.dataset.name); });
+  $('#stripeCustom').classList.toggle('on', !COLORS.some(([, h]) => h === st.color));
+  $('#stripeColorRow').hidden = !st.n;
+  applyLegStripes();
+  const pants = styleOf(state.product).kind === 'pants';
+  $('#stripeHint').textContent = st.n ? T(pants ? 'stripes.hintPants' : 'stripes.hintTop', { price: money(SHOP.stripesPrice || 0) }) : '';
+}
+function markAllDirty() { for (const z of ZONES) dirty.add(z); if (!raf) raf = requestAnimationFrame(compose); }
 function applyStrings() {
   const hex = stringHex();
   stringMat.color.set(hex);
@@ -1855,7 +1964,8 @@ function customLabel(c = state.custom) {
 function quote() {
   const sides = zonesFor(state.product).filter(s => ready ? ready[s] : editors[s].getObjects().length);
   const pcs = Object.values(state.qty).reduce((a, b) => a + b, 0) + (state.custom?.qty || 0);
-  const unit = PRODUCTS[state.product].price + sides.reduce((a, s) => a + SHOP.printPrices[s], 0);
+  const stripes = state.stripes.n ? SHOP.stripesPrice || 0 : 0;
+  const unit = PRODUCTS[state.product].price + sides.reduce((a, s) => a + SHOP.printPrices[s], 0) + stripes;
   // The matching piece comes plain, in the same sizes and quantities.
   const setUnit = state.set ? PRODUCTS[state.set.product].price : 0;
   const setSub = state.set ? setUnit * pcs + state.qty['2XL'] * SHOP.xxlSurcharge : 0;
@@ -1865,14 +1975,14 @@ function quote() {
     const o = state.couple.other;
     const oSides = zonesFor(state.product).filter(s => o.json[s]?.objects.length);
     const oPcs = Object.values(o.qty).reduce((a, b) => a + b, 0) + (o.custom?.qty || 0);
-    const oUnit = PRODUCTS[state.product].price + oSides.reduce((a, s) => a + SHOP.printPrices[s], 0);
+    const oUnit = PRODUCTS[state.product].price + oSides.reduce((a, s) => a + SHOP.printPrices[s], 0) + (o.stripes?.n ? SHOP.stripesPrice || 0 : 0);
     other = { sides: oSides, pcs: oPcs, unit: oUnit, xxl: o.qty['2XL'] * SHOP.xxlSurcharge, sub: oUnit * oPcs + o.qty['2XL'] * SHOP.xxlSurcharge };
   }
   const allPcs = pcs + (other?.pcs || 0);
   const subtotal = unit * pcs + state.qty['2XL'] * SHOP.xxlSurcharge + setSub + (other?.sub || 0);
   const discRate = SHOP.bulkDiscounts.find(([min]) => allPcs >= min)?.[1] || 0;
   const discount = subtotal * discRate;
-  return { sides, pcs, allPcs, unit, setUnit, setSub, other, subtotal, discRate, discount, total: subtotal - discount };
+  return { sides, pcs, allPcs, unit, stripes, setUnit, setSub, other, subtotal, discRate, discount, total: subtotal - discount };
 }
 const sidesLabel = sides => (sides.every(s => s === 'front' || s === 'back')
   ? T('sides.' + (sides.length === 2 ? 'both' : sides[0] || 'none'))
@@ -1884,7 +1994,7 @@ function summaryHTML(q) {
   const p = PRODUCTS[state.product], xxl = state.qty['2XL'] * SHOP.xxlSurcharge;
   const sp = state.set && PRODUCTS[state.set.product];
   const o = q.other, oc = state.couple;
-  const full = (p.was + q.sides.reduce((a, s) => a + SHOP.printPrices[s], 0)) * q.pcs + xxl + (sp ? sp.was * q.pcs + xxl : 0)
+  const full = (p.was + q.stripes + q.sides.reduce((a, s) => a + SHOP.printPrices[s], 0)) * q.pcs + xxl + (sp ? sp.was * q.pcs + xxl : 0)
     + (o ? (p.was + o.sides.reduce((a, s) => a + SHOP.printPrices[s], 0)) * o.pcs + o.xxl : 0);
   const row = (k, v, cls = '') => `<div class="${cls}"><span>${k}</span><span>${v}</span></div>`;
   return [
@@ -1892,6 +2002,7 @@ function summaryHTML(q) {
     oc && row(`<b>${pieceName(oc.active)} – ${colorName(state.color)}</b>`, '', 'sub'),
     row(T('product.' + state.product), (OFFER ? `<s>${money(p.was)}</s> ` : '') + money(p.price)),
     ...q.sides.map(side => row(T('sum.print.' + side), '+ ' + money(SHOP.printPrices[side]))),
+    q.stripes && row(T('sum.stripes'), '+ ' + money(q.stripes)),
     row(T('sum.unit'), money(q.unit), 'sub'),
     row(T('sum.pieces'), '× ' + i18n.num(q.pcs)),
     xxl && row(T('sum.xxl'), '+ ' + money(xxl)),
@@ -2004,12 +2115,14 @@ function orderMessage(order, attached) {
     `${T('msg.color')}: ${colorLabel()}`,
     hasStrings() && `${T('msg.strings')}: ${stringLabel()}`,
     state.rib && `${T('msg.rib')}: ${ribLabel()}`,
+    state.stripes.n && `${T('msg.stripes')}: ${stripeLabel()}`,
     `${T('msg.sizes')}: ${[sizes, customLabel()].filter(Boolean).join('، ')}`,
     pantsInvolved() && `${T('msg.fit')}: ${T('fit.' + state.fit)}`,
     `${T('msg.print')}: ${sidesLabel(q.sides)}`,
     pt && `— ${pt.label} —`,
     pt && `${T('msg.color')}: ${colorName(pt.color)} (\u200e${pt.color})`,
     pt?.rib && `${T('msg.rib')}: ${colorName(pt.rib)} (\u200e${pt.rib})`,
+    pt?.stripes?.n && `${T('msg.stripes')}: ${stripeLabel(pt.stripes)}`,
     pt && `${T('msg.sizes')}: ${[sz(pt.qty), customLabel(pt.custom)].filter(Boolean).join('، ')}`,
     pt && `${T('msg.print')}: ${sidesLabel(pt.sides)}`,
     pt && '—',
@@ -2052,7 +2165,7 @@ async function orderSheet(order) {
   const pt = order.partner, mine = k => (pt ? `${order.mainLabel}: ${T(k)}` : T(k));
   const rows = [
     [T('msg.product'), T('product.' + state.product)], [mine('msg.color'), colorLabel()],
-    ...(hasStrings() ? [[T('msg.strings'), stringLabel()]] : []), ...(state.rib ? [[mine('msg.rib'), ribLabel()]] : []), [mine('msg.sizes'), sizes],
+    ...(hasStrings() ? [[T('msg.strings'), stringLabel()]] : []), ...(state.rib ? [[mine('msg.rib'), ribLabel()]] : []), ...(state.stripes.n ? [[mine('msg.stripes'), stripeLabel()]] : []), [mine('msg.sizes'), sizes],
     ...(state.custom?.qty ? [[T('custom.name'), customLabel().replace(/^[^:]*:\s*/, '')]] : []),
     ...(pantsInvolved() ? [[T('msg.fit'), T('fit.' + state.fit)]] : []),
     [mine('msg.print'), sidesLabel(q.sides)],
@@ -2121,7 +2234,7 @@ function orderData(order) {
   const q = order.quote;
   return {
     code: order.code, date: Date.now(), product: T('product.' + state.product), color: colorLabel(), colorHex: state.color,
-    strings: hasStrings() ? stringLabel() : null, rib: state.rib && ribLabel(), fit: pantsInvolved() ? T('fit.' + state.fit) : null,
+    strings: hasStrings() ? stringLabel() : null, rib: state.rib && ribLabel(), stripes: state.stripes.n ? stripeLabel() : null, fit: pantsInvolved() ? T('fit.' + state.fit) : null,
     custom: state.custom?.qty ? customLabel() : null,
     qty: Object.fromEntries([...SIZES.filter(s => state.qty[s]).map(s => [s, state.qty[s]]), ...(state.custom?.qty ? [[T('custom.name'), state.custom.qty]] : [])]),
     sides: [
@@ -2145,7 +2258,7 @@ async function partnerOrder(q) {
     prints[s] = { url: printFile(s, c), mm: printRect(s, c).mm };
     c.dispose();
   }
-  return { label: pieceName(1 - state.couple.active), color: o.color, rib: o.rib, qty: o.qty, custom: o.custom, sides: q.other.sides, pcs: q.other.pcs, unit: q.other.unit, prints };
+  return { label: pieceName(1 - state.couple.active), color: o.color, rib: o.rib, stripes: o.stripes, qty: o.qty, custom: o.custom, sides: q.other.sides, pcs: q.other.pcs, unit: q.other.unit, prints };
 }
 function toPng(img) {
   const c = Object.assign(document.createElement('canvas'), { width: img.naturalWidth, height: img.naturalHeight });
@@ -2278,7 +2391,7 @@ i18n.onChange(() => {
   renderProducts();
   renderSet();
   renderCouple();
-  renderRib();
+  renderRib(); renderStripes();
   renderFit();
   renderChart();
   renderLogos();
@@ -2297,7 +2410,7 @@ i18n.onChange(() => {
   renderFit();
   renderChart();
   renderCouple();
-  renderRib();
+  renderRib(); renderStripes();
   loadLogos();
   $('#textInput').value = T('text.starter');
   renderFontGrid();
