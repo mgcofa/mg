@@ -192,6 +192,48 @@
   ]
  },
  {
+  "cat": "masry",
+  "items": [
+   "masry-alaMahlak",
+   "masry-koloHay3ady",
+   "masry-ebnBalad",
+   "masry-bentBalad",
+   "masry-mashFady",
+   "masry-cairoPin",
+   "masry-plus20",
+   "masry-shay",
+   "masry-microbus",
+   "masry-felucca",
+   "masry-cairo969",
+   "masry-ma3ak",
+   "masry-ma3aki",
+   "masry-omDonya",
+   "masry-laylQahera",
+   "masry-betola",
+   "masry-koshary",
+   "masry-taxi",
+   "masry-yaAmm",
+   "masry-legMasr"
+  ]
+ },
+ {
+  "cat": "street",
+  "items": [
+   "street-ravens",
+   "street-wardBalady",
+   "street-bowDala3",
+   "street-ma3Tesh",
+   "street-dunyaHelwa",
+   "street-num07",
+   "street-legAsly",
+   "street-legOriginal",
+   "street-sinai",
+   "street-grafShare3",
+   "street-baba3rbia",
+   "street-paint"
+  ]
+ },
+ {
   "cat": "sports",
   "items": [
    "ball-football",
