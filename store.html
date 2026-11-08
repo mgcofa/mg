@@ -6,7 +6,7 @@
 <title>CMG Store</title>
 <link rel="icon" type="image/svg+xml" href="brand/mark.svg">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;800&family=Cairo:wght@400;600;700;900&family=Lalezar&display=swap" rel="stylesheet">
-<script src="i18n.js?v=39"></script>
+<script src="i18n.js?v=44"></script>
 <style>
   :root { --indigo: #4f46e5; --purple: #9333ea; --ink: #18181b; --paper: #f4f4f5; --line: #e4e4e7; --muted: #71717a; --wa: #25d366; }
   * { box-sizing: border-box; }
@@ -39,6 +39,16 @@
   .how div { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px; font-weight: 700; font-size: 15px; }
   .how b { color: var(--indigo); font-family: Inter; margin-inline-end: 8px; }
   h2 { font-size: 19px; margin: 34px 0 12px; }
+  .card img { cursor: pointer; }
+  .card .acts { display: flex; gap: 6px; margin-top: 8px; }
+  .card .acts > * { flex: 1; padding-inline: 4px; white-space: nowrap; }
+  .card small { font-weight: 700; color: var(--muted); font-size: 12px; }
+  #viewer { border: 0; padding: 0; border-radius: 14px; width: min(920px, 96vw); height: 90vh; overflow: hidden; }
+  #viewer::backdrop { background: rgba(0,0,0,.6); }
+  #viewer > div { display: flex; flex-direction: column; height: 100%; }
+  #viewer .head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; font-weight: 700; overflow-wrap: anywhere; }
+  #viewer .head div { display: flex; gap: 6px; flex: none; }
+  #frame { border: 0; width: 100%; flex: 1; background: #f1f1f4; }
   @media (max-width: 520px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .hero h1 { font-size: 36px; } .card .row { flex-direction: column; align-items: stretch; } }
 </style>
 </head>
@@ -60,20 +70,33 @@
   <h2 data-i18n="store.how"></h2>
   <div class="how"><div><b>1</b><span data-i18n="store.how1"></span></div><div><b>2</b><span data-i18n="store.how2"></span></div><div><b>3</b><span id="how3"></span></div></div>
 </main>
+<dialog id="viewer"><div><div class="head"><span id="viewerTitle"></span><div><a class="btn primary" id="viewerOrder"></a><button class="btn" id="viewerClose"></button></div></div><iframe id="frame" title="3D"></iframe></div></dialog>
 <script>i18n.apply();</script>
 <script type="module">
 import SHOP from './config.js?v=39';
 import { countVisit } from './counter.js?v=39';
-import { listStore } from './db.js?v=40';
+import { listStore } from './db.js?v=44';
 const $ = s => document.querySelector(s), T = i18n.t, money = n => i18n.money(n);
 const OFFER = SHOP.launchOffer?.off && Date.now() < Date.parse(SHOP.launchOffer.until) ? SHOP.launchOffer : null;
 const CATS = [['all', () => true], ['hoodies', p => p.startsWith('hoodie')], ['sweats', p => p.startsWith('crew') || p === 'quarter_zip'], ['pants', p => ['joggers', 'sweatpants', 'shorts'].includes(p)]];
 let items = [], cat = 'all';
 
-const priceOf = d => (SHOP.prices[d.product] ?? 0) - (OFFER?.off || 0) + d.sides.reduce((a, s) => a + SHOP.printPrices[s], 0) + (d.stripes ? SHOP.stripesPrice : 0) + SHOP.storeMarkup;
+const piecePrice = (d, sides, stripes) => (SHOP.prices[d.product] ?? 0) - (OFFER?.off || 0) + sides.reduce((a, s) => a + SHOP.printPrices[s], 0) + (stripes ? SHOP.stripesPrice : 0) + SHOP.storeMarkup;
+const priceOf = d => piecePrice(d, d.sides, d.stripes) + (d.partner_sides ? piecePrice(d, d.partner_sides, d.partner_stripes) : 0);
+const orderLink = d => `./?store=${encodeURIComponent(d.code)}`;
+// The 3D view is the studio itself, showing only the design, in a window over the store.
+function open3d(d) {
+  $('#viewerTitle').textContent = d.title;
+  $('#viewerOrder').href = orderLink(d);
+  $('#frame').src = `${orderLink(d)}&view3d&nocount&v=44`;
+  $('#viewer').showModal();
+}
+$('#viewerClose').onclick = () => $('#viewer').close();
+$('#viewer').addEventListener('close', () => $('#frame').removeAttribute('src'));
 function render() {
   const fee = money(SHOP.storeFee);
   $('#cta').textContent = T('store.cta', { fee }); $('#how3').textContent = T('store.how3', { fee });
+  $('#viewerOrder').textContent = T('store.order'); $('#viewerClose').textContent = T('store.close');
   $('#chips').innerHTML = '';
   for (const [k] of CATS) {
     const b = document.createElement('button');
@@ -92,9 +115,13 @@ function render() {
     const b = document.createElement('div'); b.className = 'b';
     const add = (tag, cls, text) => { const el = document.createElement(tag); el.className = cls; el.textContent = text; return el; };
     const row = add('div', 'row', '');
-    row.append(add('span', 'price', money(priceOf(d))));
-    const go = add('a', 'btn primary', T('store.order')); go.href = `./?store=${encodeURIComponent(d.code)}`; row.append(go);
-    b.append(add('h3', '', d.title), add('span', 'by', `${T('store.by')}: ${d.designer}`), add('span', 'kind', T('product.' + d.product)), row);
+    const price = add('span', 'price', money(priceOf(d)));
+    if (d.partner_sides) price.append(' ', add('small', '', T('store.forBoth')));
+    row.append(price);
+    const acts = add('div', 'acts', ''), view = add('button', 'btn', T('store.view3d')), go = add('a', 'btn primary', T('store.order'));
+    view.onclick = img.onclick = () => open3d(d);
+    go.href = orderLink(d); acts.append(view, go);
+    b.append(add('h3', '', d.title), add('span', 'by', `${T('store.by')}: ${d.designer}`), add('span', 'kind', T('product.' + d.product) + (d.partner_sides ? ` – ${T('store.couple')}` : '')), row, acts);
     card.append(img, b); grid.append(card);
   }
 }

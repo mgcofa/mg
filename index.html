@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="brand/mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cairo:wght@400;600;700;900&family=Tajawal:wght@500;800&family=Lalezar&family=Reem+Kufi:wght@700&family=Amiri:wght@700&family=Bebas+Neue&family=Oswald:wght@600&family=Pacifico&family=Playfair+Display:wght@700&family=Permanent+Marker&family=Anton&family=Montserrat:wght@800&family=Bangers&family=Lobster&family=Dancing+Script:wght@700&family=Righteous&family=Russo+One&family=Black+Ops+One&family=Abril+Fatface&family=Bungee&family=Great+Vibes&family=Caveat:wght@700&family=Changa:wght@700&family=El+Messiri:wght@700&family=Aref+Ruqaa:wght@700&family=Rakkas&family=Marhey:wght@700&family=Lemonada:wght@700&family=Kufam:wght@700&family=Jomhuria&family=Mirza:wght@700&family=Vibes&display=swap" rel="stylesheet">
-<script src="i18n.js?v=43"></script>
+<script src="i18n.js?v=44"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <!-- Import maps need Safari 16.4+; this polyfill makes older iPhones load the 3D modules too. -->
@@ -125,7 +125,7 @@
   .field input { display: block; width: 100%; margin-top: 4px; font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; }
   .pub-agree { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; line-height: 1.7; margin: 12px 0; color: var(--muted); }
   .pub-agree input { margin-top: 4px; flex: none; }
-  .store-mode aside.tools > .sec:not(#storeInfo), .store-mode #coupleBar, .store-mode #editorSec, .store-mode #stageHint,
+  .store-mode aside.tools > .sec:not(#storeInfo), .store-mode:not(.store-couple) #coupleBar, .store-mode #coupleToggle, .store-mode #editorSec, .store-mode #stageHint,
   .store-mode #exportBtn, .store-mode #readyBtn, .store-mode #publishBtn { display: none; }
   .store-mode .grid2 { grid-template-columns: 1fr; }
   .review-mode header, .review-mode .policy, .review-mode aside { display: none !important; }
@@ -145,6 +145,16 @@
   #three { width: 100%; height: 100%; display: block; touch-action: none; }
   .stage-bar { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; gap: 6px; background: var(--panel); padding: 5px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.1); }
   .stage-bar .btn { border: 0; }
+  #realView { position: absolute; inset: 0; background: #ececef; display: flex; align-items: center; justify-content: center; }
+  #realView[hidden] { display: none; }
+  #realCv { max-width: 100%; max-height: 100%; display: block; }
+  #realNote { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 24px); margin: 0; padding: 4px 12px; border-radius: 99px; background: rgba(255,255,255,.88); text-align: center; font-size: 12px; color: #52525b; }
+  @media (max-width: 640px) { .stage-bar { flex-wrap: wrap; justify-content: center; width: max-content; max-width: calc(100% - 16px); gap: 2px; } .stage-bar .btn { padding: 6px 9px; font-size: 12.5px; } }
+  .real-on #stageHint { display: none; }
+  #realPick { position: absolute; bottom: 76px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; }
+  #realPick[hidden] { display: none; }
+  #realPick button { width: 34px; height: 34px; border-radius: 50%; border: 0; background: rgba(255,255,255,.92); font: inherit; font-weight: 700; cursor: pointer; }
+  #realPick button.on { background: var(--accent); color: #fff; }
   .stage-bar .btn.on { background: var(--accent-soft); color: var(--accent); }
   .stage-hint { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); background: rgba(24,24,27,.78); color: #fff; padding: 6px 12px; border-radius: 99px; font-size: 12px; white-space: nowrap; pointer-events: none; transition: opacity .3s; }
   .toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: var(--text); color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .25s; max-width: calc(100% - 32px); text-align: center; z-index: 10; }
@@ -352,12 +362,14 @@
 
   <section class="stage">
     <canvas id="three"></canvas>
+    <div id="realView" hidden><canvas id="realCv"></canvas><p id="realNote" data-i18n="view.realNote"></p><div id="realPick" hidden></div></div>
     <div class="stage-hint" id="stageHint" data-i18n="stage.hint"></div>
     <div class="stage-bar">
       <button class="btn" id="viewFront" data-i18n="view.front"></button>
       <button class="btn" id="viewBack" data-i18n="view.back"></button>
       <button class="btn" id="viewSide" data-i18n="view.side"></button>
       <button class="btn" id="spinBtn" data-i18n="view.spin"></button>
+      <button class="btn" id="realBtn" data-i18n="view.real" hidden></button>
     </div>
   </section>
 
@@ -645,6 +657,7 @@ function compose() {
   for (const s of dirty) sideCache[s] = editors[s].toCanvasElement(1024 / ZONE_SIZE[s][0]);
   dirty.clear();
   composing = false;
+  if (realOn) queueMicrotask(drawReal);
 
   tctx.fillStyle = state.color;
   tctx.fillRect(0, 0, 2048, 1024);
@@ -1132,9 +1145,9 @@ function stepTween(now) {
   camera.position.copy(controls.target).add(new THREE.Vector3().setFromSpherical(sph));
   if (k === 1) tween = null;
 }
-$('#viewFront').onclick = () => { setSide('front'); goToView(0); };
-$('#viewBack').onclick = () => { setSide('back'); goToView(Math.PI); };
-$('#viewSide').onclick = () => goToView(Math.PI / 2);
+$('#viewFront').onclick = () => { setReal(false); setSide('front'); goToView(0); };
+$('#viewBack').onclick = () => { setReal(false); setSide('back'); goToView(Math.PI); };
+$('#viewSide').onclick = () => { setReal(false); goToView(Math.PI / 2); };
 $('#spinBtn').onclick = e => { controls.autoRotate = !controls.autoRotate; e.currentTarget.classList.toggle('on', controls.autoRotate); };
 controls.addEventListener('start', () => { tween = null; $('#stageHint').style.opacity = 0; });
 
@@ -1152,14 +1165,14 @@ canvas3d.addEventListener('pointerup', e => {
   if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5) return;
   const hit = hitGarment(e);
   // In couple mode, tapping the other piece makes it the one being edited.
-  if (state.couple && companion.obj) {
+  if (state.couple && companion.obj && !document.body.classList.contains('review-mode')) {
     const other = ray.intersectObject(companion.obj, true)[0];
     if (other && (!hit || other.distance < hit.distance)) {
-      switchPiece().then(() => toast(T('couple.editing', { piece: pieceName(state.couple.active) })));
+      switchPiece().then(() => toast(T(state.store ? 'store.coupleNow' : 'couple.editing', { piece: pieceName(state.couple.active) })));
       return;
     }
   }
-  if (!hit) return;
+  if (!hit || state.store) return;   // a store design can't be moved
   const side = hit.uv.x < 0.5 ? 'front' : 'back';
   const cx = (hit.uv.x - (side === 'back' ? 0.5 : 0)) * 2 * EW;
   const cy = (realModel ? hit.uv.y : 1 - hit.uv.y) * EH;   // glTF UVs run top-down
@@ -1454,6 +1467,7 @@ const PAIRS = Object.fromEntries([
 ].map(([a, b]) => ['couples-' + a, 'couples-' + b]).concat(
   [['avocadoHim', 'avocadoHer'], ['bearHim', 'bearHer'], ['catHim', 'catHer'], ['ghostHim', 'ghostHer'], ['penguinHim', 'penguinHer'],
    ['bee', 'flower'], ['cookie', 'milk'], ['dinoHim', 'dinoHer'], ['foxHim', 'bunnyHer']].map(([a, b]) => ['toons-' + a, 'toons-' + b]),
+  [['masry-ma3ak', 'masry-ma3aki'], ['masry-ebnBalad', 'masry-bentBalad']],
 ).flatMap(([a, b]) => [[a, b], [b, a]]));
 const emptySide = () => ({ version: fabric.version, objects: [] });
 const blankQty = () => ({ S: 0, M: 1, L: 0, XL: 0, '2XL': 0 });
@@ -1498,6 +1512,14 @@ async function loadPiece(p) {
   renderRib(); renderStripes();
   syncSizeInputs();
   setColor(p.color);
+  if (state.store) lockDesign();
+}
+// A store design stays as its designer made it, on both pieces of a couple.
+function lockDesign() {
+  for (const c of Object.values(editors)) {
+    c.selection = false;
+    c.getObjects().forEach(o => o.set({ selectable: false, evented: false }));
+  }
 }
 function enableCouple() {
   state.set = null;
@@ -1526,7 +1548,7 @@ function renderCouple() {
   $$('#pieceSeg button').forEach(b => b.classList.toggle('on', on && +b.dataset.p === state.couple.active));
   $('#coupleToggle').textContent = T(on ? 'couple.off' : 'couple.on');
   $('#coupleHint').hidden = !on;
-  if (on) $('#coupleHint').innerHTML = T('couple.hint', { piece: `<b>${pieceName(state.couple.active)}</b>`, other: pieceName(1 - state.couple.active) });
+  if (on) $('#coupleHint').innerHTML = T(state.store ? 'store.coupleHint' : 'couple.hint', { piece: `<b>${pieceName(state.couple.active)}</b>`, other: pieceName(1 - state.couple.active) });
 }
 $$('#pieceSeg button').forEach(b => b.onclick = () => { if (state.couple && +b.dataset.p !== state.couple.active) switchPiece(); });
 $('#coupleToggle').onclick = () => (state.couple ? disableCouple() : enableCouple());
@@ -1697,6 +1719,7 @@ $('#undoStroke').onclick = () => {
 // ---------- Product / color ----------
 let category = styleOf(state.product).category;
 function renderProducts() {
+  syncRealBtn();
   $('#catSeg').innerHTML = '';
   for (const cat of CATEGORIES) {
     const b = document.createElement('button');
@@ -1756,6 +1779,7 @@ function setColor(c) {
   $$('.sw').forEach(s => s.classList.toggle('on', s.dataset.hex === c));
   applyGarment();
   renderSet();
+  if (realOn) drawReal();
 }
 const colorName = hex => {
   const named = COLORS.find(([, h]) => h === hex);
@@ -2007,13 +2031,13 @@ function quote() {
     const o = state.couple.other;
     const oSides = zonesFor(state.product).filter(s => o.json[s]?.objects.length);
     const oPcs = Object.values(o.qty).reduce((a, b) => a + b, 0) + (o.custom?.qty || 0);
-    const oUnit = PRODUCTS[state.product].price + oSides.reduce((a, s) => a + SHOP.printPrices[s], 0) + (o.stripes?.n ? SHOP.stripesPrice || 0 : 0);
+    const oUnit = PRODUCTS[state.product].price + oSides.reduce((a, s) => a + SHOP.printPrices[s], 0) + (o.stripes?.n ? SHOP.stripesPrice || 0 : 0) + storeFee;
     other = { sides: oSides, pcs: oPcs, unit: oUnit, xxl: o.qty['2XL'] * SHOP.xxlSurcharge, sub: oUnit * oPcs + o.qty['2XL'] * SHOP.xxlSurcharge };
   }
   const allPcs = pcs + (other?.pcs || 0);
   const subtotal = unit * pcs + state.qty['2XL'] * SHOP.xxlSurcharge + setSub + (other?.sub || 0);
   const discRate = SHOP.bulkDiscounts.find(([min]) => allPcs >= min)?.[1] || 0;
-  const discount = (subtotal - storeFee * pcs) * discRate;           // quantity discounts never come out of the designer's share
+  const discount = (subtotal - storeFee * allPcs) * discRate;           // quantity discounts never come out of the designer's share
   return { sides, pcs, allPcs, unit, stripes, storeFee, setUnit, setSub, other, subtotal, discRate, discount, total: subtotal - discount };
 }
 const sidesLabel = sides => (sides.every(s => s === 'front' || s === 'back')
@@ -2027,7 +2051,7 @@ function summaryHTML(q) {
   const sp = state.set && PRODUCTS[state.set.product];
   const o = q.other, oc = state.couple;
   const full = (p.was + q.stripes + q.storeFee + q.sides.reduce((a, s) => a + SHOP.printPrices[s], 0)) * q.pcs + xxl + (sp ? sp.was * q.pcs + xxl : 0)
-    + (o ? (p.was + o.sides.reduce((a, s) => a + SHOP.printPrices[s], 0)) * o.pcs + o.xxl : 0);
+    + (o ? (p.was + q.storeFee + o.sides.reduce((a, s) => a + SHOP.printPrices[s], 0)) * o.pcs + o.xxl : 0);
   const row = (k, v, cls = '') => `<div class="${cls}"><span>${k}</span><span>${v}</span></div>`;
   return [
     OFFER && `<div class="offer"><span>${T('offer.line', { off: money(OFFER.off), date: i18n.date(OFFER.until) })}</span></div>`,
@@ -2268,7 +2292,7 @@ async function orderPdf(order) {
 function orderData(order) {
   const q = order.quote;
   return {
-    store: state.store && { ...state.store, fee: SHOP.storeFee, commission: SHOP.storeFee * q.pcs },
+    store: state.store && { ...state.store, fee: SHOP.storeFee, commission: SHOP.storeFee * q.allPcs },
     code: order.code, date: Date.now(), product: T('product.' + state.product), color: colorLabel(), colorHex: state.color,
     strings: hasStrings() ? stringLabel() : null, rib: state.rib && ribLabel(), stripes: state.stripes.n ? stripeLabel() : null, fit: pantsInvolved() ? T('fit.' + state.fit) : null,
     custom: state.custom?.qty ? customLabel() : null,
@@ -2473,7 +2497,7 @@ async function storePreview(sides) {
   for (const c of Object.values(editors)) c.discardActiveObject().renderAll();
   ZONES.forEach(z => dirty.add(z));
   compose();
-  const both = sides.includes('front') && sides.includes('back');
+  const both = !state.couple && sides.includes('front') && sides.includes('back');   // a couple already fills the picture with two pieces
   const views = both ? [0, Math.PI] : [ZONE_VIEW[sides[0]] ?? 0], S = 800;
   const c = Object.assign(document.createElement('canvas'), { width: S * views.length, height: S }), g = c.getContext('2d');
   g.fillStyle = '#f1f1f4'; g.fillRect(0, 0, c.width, c.height);
@@ -2485,8 +2509,9 @@ async function storePreview(sides) {
 }
 $('#publishBtn').textContent = T('pub.open', { fee: money(SHOP.storeFee) });
 $('#publishBtn').onclick = () => {
-  if (state.couple) return toast(T('pub.noCouple'));
-  if (!quote().sides.length) return toast(T('toast.addDesign'));
+  const q = quote();
+  if (q.other && !(q.sides.length && q.other.sides.length)) return toast(T('pub.bothPieces'));
+  if (!q.sides.length) return toast(T('toast.addDesign'));
   $('#pubLead').textContent = T('pub.lead', { fee: money(SHOP.storeFee) });
   $('#pubTerms').textContent = T('pub.terms', { fee: money(SHOP.storeFee), min: money(SHOP.storePayoutMin) });
   $('#publishDlg').showModal();
@@ -2496,10 +2521,11 @@ $('#publishForm').onsubmit = async e => {
   e.preventDefault();
   $('#pubSend').disabled = true;
   try {
-    const sides = quote().sides, title = $('#pubTitle').value.trim(), designer = $('#pubDesigner').value.trim(), phone = $('#pubPhone').value.trim();
+    const q = quote(), sides = q.sides, o = state.couple?.other, title = $('#pubTitle').value.trim(), designer = $('#pubDesigner').value.trim(), phone = $('#pubPhone').value.trim();
     const pack = {
       v: 1, product: state.product, fit: state.fit, color: state.color, rib: state.rib, stripes: state.stripes.n ? state.stripes : null, sides,
       preview: await storePreview(sides), json: Object.fromEntries(ZONES.map(z => [z, editors[z].toJSON(['cutout'])])),
+      ...(o && { active: state.couple.active, partner: { color: o.color, rib: o.rib, stripes: o.stripes?.n ? o.stripes : null, sides: q.other.sides, json: o.json } }),
     };
     if (JSON.stringify(pack).length > 5.5e6) return toast(T('pub.tooBig'));
     await submitDesign({ title, designer, phone, pack });
@@ -2538,7 +2564,10 @@ async function loadStoreItem() {
     if (!/^D\d{1,6}$/.test(code)) throw new Error('bad code');
     const row = await getDesign(code);
     if (!row || !STYLES[row.pack?.product]) throw new Error('not in store');
-    return { ...row.pack, code: row.code, title: row.title, designer: row.designer };
+    // Inside the store's 3D window: only the rotating piece, without the ordering panel.
+    const review = new URLSearchParams(location.search).has('view3d') && parent !== window;
+    if (review) document.body.classList.add('review-mode');
+    return { ...row.pack, code: row.code, title: row.title, designer: row.designer, review };
   } catch (err) { console.error(err); toast(T('store.missing')); return null; }
 }
 function renderStoreInfo() {
@@ -2548,25 +2577,99 @@ function renderStoreInfo() {
   const add = (tag, text) => { const el = document.createElement(tag); el.textContent = text; box.append(el); return el; };
   add('h3', state.store.title);
   add('p', `${T('store.by')} ${state.store.designer}`);
-  add('p', `${T('product.' + state.product)}${i18n.sep}${colorLabel()}`);
+  add('p', `${T('product.' + state.product)}${i18n.sep}${state.couple ? T('store.couple') : colorLabel()}`);
   add('p', T('store.pickSizes')).className = 'hint';
   const back = add('a', T('store.back')); back.href = 'store.html'; back.className = 'btn block'; back.style.marginTop = '8px'; back.style.textAlign = 'center';
 }
 async function openStoreItem(item) {
-  await Promise.all([...new Set([...JSON.stringify(item.json).matchAll(/"fontFamily":"([^"]+)"/g)].map(m => m[1]))].map(loadFont));
-  await loadPiece({ json: item.json, color: item.color, rib: item.rib, stripes: item.stripes, qty: { ...state.qty } });
-  for (const c of Object.values(editors)) {
-    c.selection = false;
-    c.getObjects().forEach(o => o.set({ selectable: false, evented: false }));
-  }
+  await Promise.all([...new Set([...JSON.stringify([item.json, item.partner?.json]).matchAll(/"fontFamily":"([^"]+)"/g)].map(m => m[1]))].map(loadFont));
   state.store = { code: item.code, title: item.title, designer: item.designer };
   document.body.classList.add('store-mode');
+  pieceBusy = true;
+  // A couple: the partner's piece is drawn first, so its finished look can stand beside the main piece.
+  if (item.partner) {
+    document.body.classList.add('store-couple');
+    await loadPiece({ json: item.partner.json, color: item.partner.color, rib: item.partner.rib, stripes: item.partner.stripes, qty: blankQty() });
+    state.couple = { active: item.active === 1 ? 1 : 0, other: capturePiece() };
+  }
+  await loadPiece({ json: item.json, color: item.color, rib: item.rib, stripes: item.stripes, qty: blankQty() });
+  pieceBusy = false;
+  renderCouple();
   renderStoreInfo();
   ZONES.forEach(z => dirty.add(z));
   compose();
   updateSummary();
+  if (item.partner) updateCompanion();
   if (item.review) $('#spinBtn').click();
 }
+
+// ---------- Real look: the design and color on a photo of the piece, beside the 3D view ----------
+// Each photo has a -base picture and a -shade layer (gray folds, alpha = where the piece is). cx is the piece's center,
+// top where the print area starts (or y0 where the canvas starts, for pants), mm the photo's pixels per millimeter.
+const REAL_PHOTOS = { h9: { cx: 408, top: 506, mm: 0.654 }, h3: { cx: 414, top: 630, mm: 1.03 }, sweat: { cx: 345, top: 555, mm: 0.737 }, pants: { cx: 323, y0: 38, mm: 1.023 } };
+const HOODIE_PHOTOS = ['h9', 'h3'];
+const REAL_OF = { hoodie: HOODIE_PHOTOS, hoodie_pockets: HOODIE_PHOTOS, hoodie_oversized: HOODIE_PHOTOS, crew: ['sweat'], crew_oversized: ['sweat'], joggers: ['pants'] };
+const realAssets = {};
+let realOn = false, realDrawing = false, realAgain = false, realIdx = 0;
+function loadRealPhoto(name) {
+  return realAssets[name] ||= Promise.all([loadImage(`real/${name}-base.jpg`), loadImage(`real/${name}-shade.webp`)]).then(([base, layer]) => {
+    const c = Object.assign(document.createElement('canvas'), { width: layer.naturalWidth, height: layer.naturalHeight }), g = c.getContext('2d', { willReadFrequently: true });
+    g.drawImage(layer, 0, 0);
+    return { base, w: c.width, h: c.height, shade: g.getImageData(0, 0, c.width, c.height).data };
+  });
+}
+async function drawReal() {
+  if (!realOn) return;
+  if (realDrawing) { realAgain = true; return; }
+  realDrawing = true;
+  try {
+    const list = REAL_OF[state.product], name = list[realIdx % list.length], p = REAL_PHOTOS[name], a = await loadRealPhoto(name);
+    const layer = Object.assign(document.createElement('canvas'), { width: a.w, height: a.h }), g = layer.getContext('2d', { willReadFrequently: true });
+    g.fillStyle = state.color; g.fillRect(0, 0, a.w, a.h);
+    if (sideCache.front) {                             // the design canvas at real size: 1 canvas unit = 1.6 mm
+      const k = PRINT_MM_PER_UNIT * p.mm, area = printAreas(state.product).front, y = p.y0 ?? p.top - area.y * k;
+      g.drawImage(sideCache.front, p.cx - EW * k / 2, y, EW * k, EH * k);
+    }
+    const img = g.getImageData(0, 0, a.w, a.h), d = img.data, s = a.shade;
+    for (let i = 0; i < d.length; i += 4) {
+      const f = s[i] / 128, lift = 16 * (f - 1);       // the lift keeps folds visible on very dark colors
+      d[i] = d[i] * f + lift; d[i + 1] = d[i + 1] * f + lift; d[i + 2] = d[i + 2] * f + lift; d[i + 3] = s[i + 3];
+    }
+    g.putImageData(img, 0, 0);
+    const out = $('#realCv'), o = out.getContext('2d');
+    out.width = a.w; out.height = a.h;
+    o.drawImage(a.base, 0, 0, a.w, a.h);
+    o.drawImage(layer, 0, 0);
+  } catch (err) { console.error(err); setReal(false); }
+  realDrawing = false;
+  if (realAgain) { realAgain = false; drawReal(); }
+}
+function setReal(on) {
+  realOn = !!on && !!REAL_OF[state.product];
+  $('#realView').hidden = !realOn;
+  $('#realBtn').classList.toggle('on', realOn);
+  document.body.classList.toggle('real-on', realOn);
+  if (realOn) { for (const c of Object.values(editors)) c.renderAll(); ZONES.forEach(z => dirty.add(z)); compose(); }
+}
+// Only pieces that look like one of the photos offer this view.
+function renderRealPick() {
+  const list = REAL_OF[state.product] || [], box = $('#realPick');
+  box.innerHTML = '';
+  box.hidden = list.length < 2;
+  if (list.length < 2) return;
+  list.forEach((_, i) => {
+    const b = document.createElement('button');
+    b.textContent = i18n.num(i + 1); b.className = i === realIdx % list.length ? 'on' : '';
+    b.onclick = () => { realIdx = i; renderRealPick(); drawReal(); };
+    box.append(b);
+  });
+}
+function syncRealBtn() {
+  $('#realBtn').hidden = !REAL_OF[state.product];
+  renderRealPick();
+  if (realOn) { if (REAL_OF[state.product]) drawReal(); else setReal(false); }
+}
+$('#realBtn').onclick = () => setReal(!realOn);
 
 // ---------- Start ----------
 countVisit();

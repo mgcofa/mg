@@ -93,7 +93,8 @@ function showLogin() {
 // Anyone can submit, so nothing in a design is trusted: its pictures must be embedded, and all text is shown as text.
 function problem(p) {
   if (!p || p.v !== 1 || !p.json || !Array.isArray(p.sides) || !p.product || !/^data:image\/jpeg;base64,/.test(p.preview || '')) return 'الملف ناقص أو مش من الموقع.';
-  if ([...JSON.stringify(p.json).matchAll(/"src":"([^"]*)"/g)].some(m => !m[1].startsWith('data:image/'))) return 'التصميم فيه صور من موقع تاني، ومش هينفع ينزل.';
+  if (p.partner && (!p.partner.json || !Array.isArray(p.partner.sides))) return 'الملف ناقص أو مش من الموقع.';
+  if ([...JSON.stringify([p.json, p.partner?.json]).matchAll(/"src":"([^"]*)"/g)].some(m => !m[1].startsWith('data:image/'))) return 'التصميم فيه صور من موقع تاني، ومش هينفع ينزل.';
   return '';
 }
 async function run(fn) {
@@ -111,7 +112,7 @@ let viewing = null;
 function show3d(d, title) {
   viewing = d;
   $('#viewerTitle').textContent = title;
-  $('#frame').src = './?review=1&nocount&v=42';
+  $('#frame').src = './?review=1&nocount&v=44';
   $('#viewer').showModal();
 }
 addEventListener('message', e => {
@@ -135,7 +136,7 @@ function pendingCard(d) {
   no.onclick = () => run(async () => { if (confirm(`ترفض «${d.title}» وتحذفه نهائيًا؟`)) { await reject(token, d.id); await refresh(); } });
   const img = el('img', { alt: '' });
   if (/^data:image\/jpeg;base64,/.test(d.pack?.preview || '')) img.src = d.pack.preview;
-  const info = el('p', { className: 'muted', textContent: `المنتج: ${d.pack?.product || '?'} • اللون: ${d.pack?.color || '?'} • الطباعة: ${(d.pack?.sides || []).map(z => ZONES[z] || z).join(' + ')} • رقم التحويل: ${phoneOf(d)}` });
+  const info = el('p', { className: 'muted', textContent: `المنتج: ${d.pack?.product || '?'} • اللون: ${d.pack?.color || '?'} • الطباعة: ${(d.pack?.sides || []).map(z => ZONES[z] || z).join(' + ')}${d.pack?.partner ? ` • كابلز: القطعة التانية ${d.pack.partner.color} – ${(d.pack.partner.sides || []).map(z => ZONES[z] || z).join(' + ')}` : ''} • رقم التحويل: ${phoneOf(d)}` });
   const body = el('div', {}, el('label', { textContent: 'اسم التصميم' }), title, el('label', { textContent: 'اسم المصمم' }), designer, info);
   if (bad) body.append(el('p', { className: 'err', textContent: bad }));
   body.append(el('div', { className: 'actions' }, view, ok, no));

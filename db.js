@@ -19,7 +19,7 @@ export async function submitDesign({ title, designer, phone, pack }) {
   await rest('designs', { method: 'POST', headers: quiet, body: JSON.stringify({ id, title, designer, pack }) });
   await rest('design_contacts', { method: 'POST', headers: quiet, body: JSON.stringify({ design_id: id, phone }) });
 }
-export const listStore = () => rest('designs?status=eq.approved&order=created_at.desc&select=code,title,designer,product:pack->>product,sides:pack->sides,stripes:pack->stripes,preview:pack->>preview');
+export const listStore = () => rest('designs?status=eq.approved&order=created_at.desc&select=code,title,designer,product:pack->>product,sides:pack->sides,stripes:pack->stripes,partner_sides:pack->partner->sides,partner_stripes:pack->partner->stripes,preview:pack->>preview');
 export async function getDesign(code) {
   const [row] = await rest(`designs?code=eq.${encodeURIComponent(code)}&status=eq.approved&select=code,title,designer,pack&limit=1`);
   return row || null;
