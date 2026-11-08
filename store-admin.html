@@ -31,6 +31,11 @@
   .err { color: var(--danger); font-weight: 700; font-size: 14px; }
   ul { margin: 6px 0; padding-inline-start: 20px; line-height: 1.9; font-size: 14px; }
   .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  #viewer { border: 0; padding: 0; border-radius: 14px; width: min(920px, 96vw); height: 90vh; overflow: hidden; }
+  #viewer::backdrop { background: rgba(0,0,0,.6); }
+  #viewer > div { display: flex; flex-direction: column; height: 100%; }
+  #viewer .head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; font-weight: 700; overflow-wrap: anywhere; }
+  #frame { border: 0; width: 100%; flex: 1; background: #f1f1f4; }
   @media (max-width: 640px) { .item { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -44,7 +49,7 @@
     <p class="err" id="loginErr" hidden></p>
   </form>
   <div id="app" hidden>
-    <div class="top"><h1>مراجعة التصاميم</h1><button class="btn" id="out">خروج</button></div>
+    <div class="top"><h1>مراجعة التصاميم</h1><div><button class="btn" id="reload">تحديث</button> <button class="btn" id="out">خروج</button></div></div>
     <p class="muted">قبل الموافقة اتأكد: مافيش لوجو براند أو اسم نادي، ولا شخصية كرتون أو صورة فنان أو لاعب، ومطابق لسياسة المحتوى.</p>
     <p class="err" id="err" hidden></p>
     <h2 id="pendingTitle"></h2>
@@ -53,6 +58,7 @@
     <div class="card" id="live"></div>
   </div>
 </main>
+<dialog id="viewer"><div><div class="head"><span id="viewerTitle"></span><button class="btn" id="closeViewer">إغلاق</button></div><iframe id="frame" title="التصميم 3D"></iframe></div></dialog>
 <script type="module">
 import { login, listPending, listApproved, approve, reject, takeDown } from './db.js?v=40';
 const $ = s => document.querySelector(s);
@@ -81,8 +87,26 @@ async function run(fn) {
     $('#err').textContent = 'حصلت مشكلة، جرّب تاني.'; $('#err').hidden = false;
   }
 }
+const ZONES = { front: 'الأمام', back: 'الخلف', sleeveR: 'الكم اليمين', sleeveL: 'الكم الشمال', hood: 'الكابتشو' };
+// The 3D view is the studio itself in a frame; the design is handed to it only after it says it's ready.
+let viewing = null;
+function show3d(d, title) {
+  viewing = d;
+  $('#viewerTitle').textContent = title;
+  $('#frame').src = './?review=1&nocount&v=42';
+  $('#viewer').showModal();
+}
+addEventListener('message', e => {
+  if (e.origin !== location.origin || e.source !== $('#frame').contentWindow || e.data?.type !== 'cmg-review-ready' || !viewing) return;
+  e.source.postMessage({ type: 'cmg-review', pack: viewing.pack, title: viewing.title, designer: viewing.designer }, location.origin);
+});
+$('#closeViewer').onclick = () => $('#viewer').close();
+$('#viewer').addEventListener('close', () => { viewing = null; $('#frame').removeAttribute('src'); });
+
 function pendingCard(d) {
   const bad = problem(d.pack), title = el('input', { value: d.title, maxLength: 40 }), designer = el('input', { value: d.designer, maxLength: 40 });
+  const view = el('button', { className: 'btn', textContent: 'شوفه 3D', disabled: !!bad });
+  view.onclick = () => show3d(d, title.value);
   const ok = el('button', { className: 'btn ok', textContent: 'موافقة ونشر', disabled: !!bad }), no = el('button', { className: 'btn danger', textContent: 'رفض وحذف' });
   ok.onclick = () => run(async () => {
     if (!title.value.trim() || !designer.value.trim()) return alert('اكتب اسم التصميم والمصمم.');
@@ -93,14 +117,19 @@ function pendingCard(d) {
   no.onclick = () => run(async () => { if (confirm(`ترفض «${d.title}» وتحذفه نهائيًا؟`)) { await reject(token, d.id); await refresh(); } });
   const img = el('img', { alt: '' });
   if (/^data:image\/jpeg;base64,/.test(d.pack?.preview || '')) img.src = d.pack.preview;
-  const info = el('p', { className: 'muted', textContent: `المنتج: ${d.pack?.product || '?'} • اللون: ${d.pack?.color || '?'} • الطباعة: ${(d.pack?.sides || []).join(' + ')} • رقم التحويل: ${phoneOf(d)}` });
+  const info = el('p', { className: 'muted', textContent: `المنتج: ${d.pack?.product || '?'} • اللون: ${d.pack?.color || '?'} • الطباعة: ${(d.pack?.sides || []).map(z => ZONES[z] || z).join(' + ')} • رقم التحويل: ${phoneOf(d)}` });
   const body = el('div', {}, el('label', { textContent: 'اسم التصميم' }), title, el('label', { textContent: 'اسم المصمم' }), designer, info);
   if (bad) body.append(el('p', { className: 'err', textContent: bad }));
-  body.append(el('div', { className: 'actions' }, ok, no));
+  body.append(el('div', { className: 'actions' }, view, ok, no));
   return el('div', { className: 'card item' }, img, body);
 }
-async function refresh() {
+let shown = '';
+// Background checks redraw only when the list changed, and never while a name is being edited.
+async function refresh(background = false) {
   const [pending, live] = await Promise.all([listPending(token), listApproved(token)]);
+  const ids = [...pending, ...live].map(d => d.id).join();
+  if (background && (ids === shown || document.activeElement?.closest?.('#pending'))) return;
+  shown = ids;
   $('#pendingTitle').textContent = `مستني المراجعة (${fmt(pending.length)})`;
   $('#pending').replaceChildren(...(pending.length ? pending.map(pendingCard) : [el('div', { className: 'card muted', textContent: 'مفيش تصاميم جديدة.' })]));
   $('#liveTitle').textContent = `منشور في الاستور (${fmt(live.length)})`;
@@ -125,6 +154,12 @@ $('#login').onsubmit = async e => {
   } finally { $('#go').disabled = false; }
 };
 $('#out').onclick = showLogin;
+$('#reload').onclick = () => run(() => refresh());
+// New designs show up by themselves while the page is open.
+const poll = () => { if (token && !$('#app').hidden && !document.hidden) run(() => refresh(true)); };
+setInterval(poll, 15000);
+document.addEventListener('visibilitychange', poll);
+addEventListener('focus', poll);
 if (token) enter();
 </script>
 </body>

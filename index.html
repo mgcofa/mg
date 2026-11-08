@@ -128,6 +128,9 @@
   .store-mode aside.tools > .sec:not(#storeInfo), .store-mode #coupleBar, .store-mode #editorSec, .store-mode #stageHint,
   .store-mode #exportBtn, .store-mode #readyBtn, .store-mode #publishBtn { display: none; }
   .store-mode .grid2 { grid-template-columns: 1fr; }
+  .review-mode header, .review-mode .policy, .review-mode aside { display: none !important; }
+  .review-mode .app { display: block; height: 100vh; }
+  .review-mode .stage { height: 100vh !important; }
   #storeInfo h3 { margin: 0 0 6px; } #storeInfo p { margin: 4px 0; font-size: 14px; }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
@@ -2487,6 +2490,20 @@ $('#publishForm').onsubmit = async e => {
   } finally { $('#pubSend').disabled = false; }
 };
 
+// Inside the review page: the owner's page hands over a design waiting for approval, shown as a rotating 3D piece only.
+function loadReviewItem() {
+  if (!new URLSearchParams(location.search).has('review') || parent === window) return null;
+  document.body.classList.add('review-mode');
+  return new Promise(done => {
+    addEventListener('message', function take(e) {
+      if (e.origin !== location.origin || e.source !== parent || e.data?.type !== 'cmg-review' || !STYLES[e.data.pack?.product]) return;
+      removeEventListener('message', take);
+      done({ ...e.data.pack, code: '', title: e.data.title, designer: e.data.designer, review: true });
+    });
+    parent.postMessage({ type: 'cmg-review-ready' }, location.origin);
+  });
+}
+
 // index.html?store=D001 opens a published design ready to order: the customer only picks sizes.
 async function loadStoreItem() {
   const code = new URLSearchParams(location.search).get('store');
@@ -2522,6 +2539,7 @@ async function openStoreItem(item) {
   ZONES.forEach(z => dirty.add(z));
   compose();
   updateSummary();
+  if (item.review) $('#spinBtn').click();
 }
 
 // ---------- Start ----------
@@ -2539,7 +2557,7 @@ countVisit();
   $('#textInput').value = T('text.starter');
   renderFontGrid();
   await loadFont(starterFont());
-  const storeItem = await loadStoreItem();
+  const storeItem = await loadReviewItem() || await loadStoreItem();
   if (storeItem) {
     state.product = storeItem.product; category = styleOf(storeItem.product).category; state.fit = storeItem.fit || 'men';
     renderProducts(); renderSides(); renderFit(); renderChart();
