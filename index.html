@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="brand/mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cairo:wght@400;600;700;900&family=Tajawal:wght@500;800&family=Lalezar&family=Reem+Kufi:wght@700&family=Amiri:wght@700&family=Bebas+Neue&family=Oswald:wght@600&family=Pacifico&family=Playfair+Display:wght@700&family=Permanent+Marker&family=Anton&family=Montserrat:wght@800&family=Bangers&family=Lobster&family=Dancing+Script:wght@700&family=Righteous&family=Russo+One&family=Black+Ops+One&family=Abril+Fatface&family=Bungee&family=Great+Vibes&family=Caveat:wght@700&family=Changa:wght@700&family=El+Messiri:wght@700&family=Aref+Ruqaa:wght@700&family=Rakkas&family=Marhey:wght@700&family=Lemonada:wght@700&family=Kufam:wght@700&family=Jomhuria&family=Mirza:wght@700&family=Vibes&display=swap" rel="stylesheet">
-<script src="i18n.js?v=38"></script>
+<script src="i18n.js?v=39"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <!-- Import maps need Safari 16.4+; this polyfill makes older iPhones load the 3D modules too. -->
@@ -491,9 +491,10 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { EW, EH, STYLES, CATEGORIES, styleOf, buildGarment, printAreas, pocketOutlines } from './garment.js?v=38';
-import SHOP from './config.js?v=38';
-import { countVisit, countOrder } from './counter.js?v=38';
+import { EW, EH, STYLES, CATEGORIES, styleOf, buildGarment, printAreas, pocketOutlines } from './garment.js?v=39';
+import SHOP from './config.js?v=39';
+import { countVisit, countOrder } from './counter.js?v=39';
+import { submitDesign, getDesign } from './db.js?v=40';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -2350,7 +2351,7 @@ $('#orderForm').onsubmit = async e => {
       : T('sent.step2', { file: order.files[0].name });
     $('#sentOpen').href = `https://wa.me/${SHOP.whatsapp}?text=${encodeURIComponent(orderMessage(order))}`;
     $('#sentOpen').className = 'btn wa';
-    $('#sentTitle').textContent = T('sent.title'); $('#sentShare').textContent = T('sent.share'); $('#sentFile').textContent = T('sent.file');
+    $('#sentTitle').textContent = T('sent.title'); $('#sentStep2').hidden = false; $('#sentOpen').hidden = false;
     $('#sentOpen').textContent = T(IS_PHONE ? 'sent.openText' : 'sent.open');
     $('#sentShare').hidden = !canShare;
     if (fileUrl) URL.revokeObjectURL(fileUrl);
@@ -2467,28 +2468,18 @@ $('#publishForm').onsubmit = async e => {
   $('#pubSend').disabled = true;
   try {
     const sides = quote().sides, title = $('#pubTitle').value.trim(), designer = $('#pubDesigner').value.trim(), phone = $('#pubPhone').value.trim();
-    const id = Date.now().toString(36).slice(-5).toUpperCase();
     const pack = {
-      v: 1, title, designer, phone, product: state.product, fit: state.fit, color: state.color, rib: state.rib, stripes: state.stripes, sides,
+      v: 1, product: state.product, fit: state.fit, color: state.color, rib: state.rib, stripes: state.stripes.n ? state.stripes : null, sides,
       preview: await storePreview(sides), json: Object.fromEntries(ZONES.map(z => [z, editors[z].toJSON(['cutout'])])),
     };
-    // Plain text, because phones can only share a short list of file types.
-    const file = new File([JSON.stringify(pack)], `CMG-design-${id}.txt`, { type: 'text/plain' });
-    lastOrder = { files: [file] };
-    const canShare = IS_PHONE && shareFiles(true);
-    if (!IS_PHONE) downloadImages();
+    if (JSON.stringify(pack).length > 5.5e6) return toast(T('pub.tooBig'));
+    await submitDesign({ title, designer, phone, pack });
     $('#publishDlg').close();
-    const text = [T('pub.msgTitle'), `${T('pub.name')}: ${title}`, `${T('pub.designer')}: ${designer}`, `${T('pub.phone')}: ${phone}`, `${T('msg.product')}: ${T('product.' + state.product)}`, '', T('pub.msgFile', { file: file.name })].join('\n');
-    $('#sentTitle').textContent = T('pub.sentTitle');
-    $('#sentStep1').textContent = T('pub.step1');
-    $('#sentStep2').textContent = T(!IS_PHONE ? 'pub.step2pc' : canShare ? 'pub.step2share' : 'pub.step2open', { file: file.name });
-    $('#sentOpen').href = `https://wa.me/${SHOP.whatsapp}?text=${encodeURIComponent(text)}`;
-    $('#sentOpen').className = 'btn wa'; $('#sentOpen').textContent = T('pub.openWa');
-    $('#sentShare').hidden = !canShare; $('#sentShare').textContent = T('pub.shareFile');
-    if (fileUrl) URL.revokeObjectURL(fileUrl);
-    fileUrl = URL.createObjectURL(file);
-    $('#sentFile').hidden = !(IS_PHONE && !canShare); $('#sentFile').href = fileUrl; $('#sentFile').download = file.name; $('#sentFile').textContent = T('pub.openFile');
-    $('#sentAgain').hidden = IS_PHONE;
+    $('#publishForm').reset();
+    $('#sentTitle').textContent = T('pub.doneTitle');
+    $('#sentStep1').textContent = T('pub.doneText');
+    $('#sentStep2').hidden = true;
+    for (const id of ['#sentOpen', '#sentShare', '#sentFile', '#sentAgain']) $(id).hidden = true;
     $('#sentDlg').showModal();
   } catch (err) {
     console.error(err);
@@ -2502,12 +2493,9 @@ async function loadStoreItem() {
   if (!code) return null;
   try {
     if (!/^D\d{1,6}$/.test(code)) throw new Error('bad code');
-    const list = await fetch(`store/store.json?t=${Date.now()}`).then(r => r.json());
-    const entry = list.find(x => x.code === code);
-    if (!entry) throw new Error('not in store');           // taken down: the file may remain, the listing decides
-    const d = await fetch(`store/${code}.json?t=${Date.now()}`).then(r => r.json());
-    if (!STYLES[d.product]) throw new Error('unknown product');
-    return { ...d, code, title: entry.title, designer: entry.designer };
+    const row = await getDesign(code);
+    if (!row || !STYLES[row.pack?.product]) throw new Error('not in store');
+    return { ...row.pack, code: row.code, title: row.title, designer: row.designer };
   } catch (err) { console.error(err); toast(T('store.missing')); return null; }
 }
 function renderStoreInfo() {

@@ -6,7 +6,7 @@
 <title>CMG Store</title>
 <link rel="icon" type="image/svg+xml" href="brand/mark.svg">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;800&family=Cairo:wght@400;600;700;900&family=Lalezar&display=swap" rel="stylesheet">
-<script src="i18n.js?v=38"></script>
+<script src="i18n.js?v=39"></script>
 <style>
   :root { --indigo: #4f46e5; --purple: #9333ea; --ink: #18181b; --paper: #f4f4f5; --line: #e4e4e7; --muted: #71717a; --wa: #25d366; }
   * { box-sizing: border-box; }
@@ -62,8 +62,9 @@
 </main>
 <script>i18n.apply();</script>
 <script type="module">
-import SHOP from './config.js?v=38';
-import { countVisit } from './counter.js?v=38';
+import SHOP from './config.js?v=39';
+import { countVisit } from './counter.js?v=39';
+import { listStore } from './db.js?v=40';
 const $ = s => document.querySelector(s), T = i18n.t, money = n => i18n.money(n);
 const OFFER = SHOP.launchOffer?.off && Date.now() < Date.parse(SHOP.launchOffer.until) ? SHOP.launchOffer : null;
 const CATS = [['all', () => true], ['hoodies', p => p.startsWith('hoodie')], ['sweats', p => p.startsWith('crew') || p === 'quarter_zip'], ['pants', p => ['joggers', 'sweatpants', 'shorts'].includes(p)]];
@@ -87,7 +88,7 @@ function render() {
   for (const d of shown) {
     // Names come from people: always set as text, never as HTML.
     const card = document.createElement('article'); card.className = 'card';
-    const img = Object.assign(document.createElement('img'), { src: `store/${d.code}.jpg`, alt: d.title, loading: 'lazy' });
+    const img = Object.assign(document.createElement('img'), { src: /^data:image\/jpeg;base64,/.test(d.preview) ? d.preview : '', alt: d.title, loading: 'lazy' });
     const b = document.createElement('div'); b.className = 'b';
     const add = (tag, cls, text) => { const el = document.createElement(tag); el.className = cls; el.textContent = text; return el; };
     const row = add('div', 'row', '');
@@ -99,7 +100,7 @@ function render() {
 }
 $('#langBtn').onclick = () => i18n.toggle();
 i18n.onChange?.(render);
-try { items = await fetch(`store/store.json?t=${Date.now()}`).then(r => r.ok ? r.json() : []); } catch { items = []; }
+try { items = await listStore(); } catch (err) { console.error(err); items = []; }
 render();
 countVisit();
 </script>
