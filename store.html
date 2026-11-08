@@ -6,7 +6,8 @@
 <title>CMG Store</title>
 <link rel="icon" type="image/svg+xml" href="brand/mark.svg">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;800&family=Cairo:wght@400;600;700;900&family=Lalezar&display=swap" rel="stylesheet">
-<script src="i18n.js?v=44"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cairo:wght@400;600;700;900&family=Tajawal:wght@500;800&family=Lalezar&family=Reem+Kufi:wght@700&family=Amiri:wght@700&family=Bebas+Neue&family=Oswald:wght@600&family=Pacifico&family=Playfair+Display:wght@700&family=Permanent+Marker&family=Anton&family=Montserrat:wght@800&family=Bangers&family=Lobster&family=Dancing+Script:wght@700&family=Righteous&family=Russo+One&family=Black+Ops+One&family=Abril+Fatface&family=Bungee&family=Great+Vibes&family=Caveat:wght@700&family=Changa:wght@700&family=El+Messiri:wght@700&family=Aref+Ruqaa:wght@700&family=Rakkas&family=Marhey:wght@700&family=Lemonada:wght@700&family=Kufam:wght@700&family=Jomhuria&family=Mirza:wght@700&family=Vibes&display=swap" rel="stylesheet">
+<script src="i18n.js?v=45"></script>
 <style>
   :root { --indigo: #4f46e5; --purple: #9333ea; --ink: #18181b; --paper: #f4f4f5; --line: #e4e4e7; --muted: #71717a; --wa: #25d366; }
   * { box-sizing: border-box; }
@@ -40,6 +41,10 @@
   .how b { color: var(--indigo); font-family: Inter; margin-inline-end: 8px; }
   h2 { font-size: 19px; margin: 34px 0 12px; }
   .card img { cursor: pointer; }
+  .pics { position: relative; }
+  .pics .real { position: absolute; inset: 0; opacity: 0; transition: opacity .5s; pointer-events: none; }
+  .pics .tag { position: absolute; inset-inline-start: 8px; bottom: 8px; padding: 2px 8px; border-radius: 99px; background: rgba(24,24,27,.72); color: #fff; font-size: 11px; font-weight: 700; opacity: 0; transition: opacity .5s; pointer-events: none; }
+  .card.flip .real, .card.flip .tag { opacity: 1; }
   .card .acts { display: flex; gap: 6px; margin-top: 8px; }
   .card .acts > * { flex: 1; padding-inline: 4px; white-space: nowrap; }
   .card small { font-weight: 700; color: var(--muted); font-size: 12px; }
@@ -75,11 +80,37 @@
 <script type="module">
 import SHOP from './config.js?v=39';
 import { countVisit } from './counter.js?v=39';
-import { listStore } from './db.js?v=44';
+import { listStore, getDesign } from './db.js?v=44';
+import { REAL_OF, realPreview } from './real-look.js?v=45';
 const $ = s => document.querySelector(s), T = i18n.t, money = n => i18n.money(n);
 const OFFER = SHOP.launchOffer?.off && Date.now() < Date.parse(SHOP.launchOffer.until) ? SHOP.launchOffer : null;
 const CATS = [['all', () => true], ['hoodies', p => p.startsWith('hoodie')], ['sweats', p => p.startsWith('crew') || p === 'quarter_zip'], ['pants', p => ['joggers', 'sweatpants', 'shorts'].includes(p)]];
-let items = [], cat = 'all';
+let items = [], cat = 'all', flipped = false;
+// The real look of each design is drawn once, when its card first comes into view, one card at a time.
+const realUrl = new Map();
+let queue = Promise.resolve();
+function showReal(card, url) {
+  card.querySelector('.real').src = url;
+  card.classList.add('has-real');
+  card.classList.toggle('flip', flipped);
+}
+const seen = new IntersectionObserver(entries => {
+  for (const e of entries) {
+    if (!e.isIntersecting) continue;
+    seen.unobserve(e.target);
+    const card = e.target, code = card.dataset.code;
+    queue = queue.then(async () => {
+      try {
+        if (!realUrl.has(code)) realUrl.set(code, await realPreview((await getDesign(code)).pack));
+        if (realUrl.get(code) && card.isConnected) showReal(card, realUrl.get(code));
+      } catch (err) { console.error(err); }
+    });
+  }
+}, { rootMargin: '200px' });
+if (!matchMedia('(prefers-reduced-motion: reduce)').matches) setInterval(() => {
+  flipped = !flipped;
+  document.querySelectorAll('.card.has-real').forEach(c => c.classList.toggle('flip', flipped));
+}, 2000);
 
 const piecePrice = (d, sides, stripes) => (SHOP.prices[d.product] ?? 0) - (OFFER?.off || 0) + sides.reduce((a, s) => a + SHOP.printPrices[s], 0) + (stripes ? SHOP.stripesPrice : 0) + SHOP.storeMarkup;
 const priceOf = d => piecePrice(d, d.sides, d.stripes) + (d.partner_sides ? piecePrice(d, d.partner_sides, d.partner_stripes) : 0);
@@ -122,7 +153,12 @@ function render() {
     view.onclick = img.onclick = () => open3d(d);
     go.href = orderLink(d); acts.append(view, go);
     b.append(add('h3', '', d.title), add('span', 'by', `${T('store.by')}: ${d.designer}`), add('span', 'kind', T('product.' + d.product) + (d.partner_sides ? ` – ${T('store.couple')}` : '')), row, acts);
-    card.append(img, b); grid.append(card);
+    const pics = document.createElement('div'); pics.className = 'pics'; pics.append(img);
+    card.dataset.code = d.code; card.append(pics, b); grid.append(card);
+    if (REAL_OF[d.product]) {
+      pics.append(Object.assign(document.createElement('img'), { className: 'real', alt: '' }), add('span', 'tag', T('store.realTag')));
+      if (realUrl.get(d.code)) showReal(card, realUrl.get(d.code)); else if (!realUrl.has(d.code)) seen.observe(card);
+    }
   }
 }
 $('#langBtn').onclick = () => i18n.toggle();
