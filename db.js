@@ -25,6 +25,16 @@ export async function getDesign(code) {
   return row || null;
 }
 
+// An order's PDF goes to a private bucket: visitors can add files there but never read them.
+export async function uploadOrderFile(id, file) {
+  const path = `${id}/${file.name}`;
+  const r = await fetch(`${BASE}/storage/v1/object/orders/${path}`, { method: 'POST', headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': file.type || 'application/pdf' }, body: file });
+  if (!r.ok) throw Object.assign(new Error(`upload ${r.status}`), { status: r.status });
+  return path;
+}
+// The database works out the price itself from its own price list; the total it returns is the real one.
+export const placeOrder = o => rest('rpc/place_order', { method: 'POST', body: JSON.stringify({ o }) });
+
 // ---------- Owner ----------
 export async function login(email, password) {
   const r = await fetch(`${BASE}/auth/v1/token?grant_type=password`, {
@@ -43,3 +53,11 @@ export async function approve(token, id, title, designer) {
 }
 export const takeDown = (token, id) => rest(`designs?id=eq.${id}`, { token, method: 'PATCH', headers: quiet, body: JSON.stringify({ status: 'rejected' }) });
 export const reject = (token, id) => rest(`designs?id=eq.${id}`, { token, method: 'DELETE', headers: quiet });
+
+export const listOrders = token => rest('orders?select=*&order=created_at.desc&limit=300', { token });
+export const setOrderStatus = (token, id, status) => rest(`orders?id=eq.${id}`, { token, method: 'PATCH', headers: quiet, body: JSON.stringify({ status }) });
+export async function orderFileUrl(token, path) {
+  const r = await fetch(`${BASE}/storage/v1/object/sign/orders/${path}`, { method: 'POST', headers: { apikey: KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ expiresIn: 3600 }) });
+  if (!r.ok) throw Object.assign(new Error(`sign ${r.status}`), { status: r.status });
+  return `${BASE}/storage/v1${(await r.json()).signedURL}`;
+}

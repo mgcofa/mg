@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex">
-<title>CMG | مراجعة تصاميم الاستور</title>
+<title>CMG | لوحة التحكم</title>
 <link rel="icon" type="image/svg+xml" href="brand/mark.svg">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
 <style>
@@ -36,32 +36,50 @@
   #viewer > div { display: flex; flex-direction: column; height: 100%; }
   #viewer .head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; font-weight: 700; overflow-wrap: anywhere; }
   #frame { border: 0; width: 100%; flex: 1; background: #f1f1f4; }
+  .tabs { display: flex; gap: 8px; margin: 14px 0; }
+  .tab { font: inherit; font-weight: 800; border: 0; background: #e4e4e7; border-radius: 10px; padding: 9px 18px; cursor: pointer; }
+  .tab.on { background: var(--indigo); color: #fff; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chips button { font: inherit; font-size: 13px; font-weight: 700; border: 1px solid var(--line); background: #fff; border-radius: 99px; padding: 5px 13px; cursor: pointer; }
+  .chips button.on { background: #18181b; border-color: #18181b; color: #fff; }
+  .order-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .order-head b { font-size: 17px; direction: ltr; unicode-bidi: embed; }
+  .order-head select { font: inherit; font-weight: 700; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; }
+  .total { font-weight: 900; font-size: 18px; }
+  a.btn { text-decoration: none; display: inline-block; }
   @media (max-width: 640px) { .item { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 <main>
   <form class="card" id="login">
-    <h1>مراجعة التصاميم</h1>
+    <h1>لوحة CMG</h1>
     <label for="email">الإيميل</label><input id="email" type="email" required autocomplete="username">
     <label for="pass">الباسورد</label><input id="pass" type="password" required autocomplete="current-password">
     <button class="btn primary" id="go">دخول</button>
     <p class="err" id="loginErr" hidden></p>
   </form>
   <div id="app" hidden>
-    <div class="top"><h1>مراجعة التصاميم</h1><div><button class="btn" id="reload">تحديث</button> <button class="btn" id="out">خروج</button></div></div>
+    <div class="top"><h1>لوحة CMG</h1><div><button class="btn" id="reload">تحديث</button> <button class="btn" id="out">خروج</button></div></div>
+    <div class="tabs"><button class="tab on" data-tab="orders" id="tabOrdersBtn"></button><button class="tab" data-tab="store" id="tabStoreBtn"></button></div>
+    <div id="tabOrders">
+      <div class="chips" id="statusChips"></div>
+      <div id="orders"></div>
+    </div>
+    <div id="tabStore" hidden>
     <p class="muted">قبل الموافقة اتأكد: مافيش لوجو براند أو اسم نادي، ولا شخصية كرتون أو صورة فنان أو لاعب، ومطابق لسياسة المحتوى.</p>
     <p class="err" id="err" hidden></p>
     <h2 id="pendingTitle"></h2>
     <div id="pending"></div>
     <h2 id="liveTitle"></h2>
     <div class="card" id="live"></div>
+    </div>
   </div>
 </main>
 <dialog id="viewer"><div><div class="head"><span id="viewerTitle"></span><button class="btn" id="closeViewer">إغلاق</button></div><iframe id="frame" title="التصميم 3D"></iframe></div></dialog>
 <script type="module">
-import { login, listPending, listApproved, approve, reject, takeDown } from './db.js?v=40';
-const $ = s => document.querySelector(s);
+import { login, listPending, listApproved, approve, reject, takeDown, listOrders, setOrderStatus, orderFileUrl } from './db.js?v=43';
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 let token = null;
 try { token = sessionStorage.getItem('cmg-admin'); } catch {}
 
@@ -123,13 +141,61 @@ function pendingCard(d) {
   body.append(el('div', { className: 'actions' }, view, ok, no));
   return el('div', { className: 'card item' }, img, body);
 }
+// ---------- Orders ----------
+const STATUS = { new: 'جديد', making: 'بيتنفذ', shipped: 'اتشحن', delivered: 'اتسلم', cancelled: 'اتلغى' };
+let orders = [], filter = 'all';
+$$('.tab').forEach(b => b.onclick = () => {
+  $$('.tab').forEach(x => x.classList.toggle('on', x === b));
+  $('#tabOrders').hidden = b.dataset.tab !== 'orders'; $('#tabStore').hidden = b.dataset.tab !== 'store';
+});
+const egMoney = n => `${Number(n).toLocaleString('ar-EG')} ج.م`;
+const waNumber = p => { const d = String(p).replace(/[٠-٩]/g, c => '٠١٢٣٤٥٦٧٨٩'.indexOf(c)).replace(/\D/g, ''); return d.startsWith('0') ? '2' + d : d; };
+function orderLines(o) {
+  const d = o.details || {}, qty = Object.entries(d.qty || {}).map(([s, n]) => `${s}×${n}`).join('  ');
+  return [
+    o.store_code && `من الاستور: ${o.store_code}${d.store?.title ? ` – ${d.store.title}` : ''} – المصمم: ${o.designer} – العمولة: ${egMoney(o.commission)}`,
+    `${d.product || o.product}${d.color ? ` • ${d.color}` : ''}`, d.print && `الطباعة: ${d.print}`, qty && `المقاسات: ${qty}`, d.custom, d.fit && `المقاس: ${d.fit}`, d.strings && `الرباط: ${d.strings}`, d.rib && `الأساور والأستيك: ${d.rib}`, d.stripes && `خطوط اسبورت: ${d.stripes}`,
+    d.set && `طقم: ${d.set.item}`, d.partner && `القطعة التانية: ${d.partner.label} – ${d.partner.color} – ${d.partner.print}`, d.ready && 'تصميم جاهز من العميل',
+  ].filter(Boolean);
+}
+function orderCard(o) {
+  const sel = el('select'); for (const [k, v] of Object.entries(STATUS)) sel.append(new Option(v, k, k === o.status, k === o.status));
+  sel.onchange = () => run(async () => { await setOrderStatus(token, o.id, sel.value); o.status = sel.value; renderOrders(); });
+  const when = new Date(o.created_at).toLocaleString('ar-EG', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Cairo' });
+  const body = [el('div', { className: 'order-head' }, el('span', {}, el('b', { textContent: o.code }), el('span', { className: 'muted', textContent: `  ${when}` })), sel)];
+  body.push(el('p', { className: 'muted', textContent: `${o.name} • ${o.phone} • ${o.city} • ${o.address}` }));
+  for (const line of orderLines(o)) body.push(el('p', { className: 'muted', textContent: line }));
+  if (o.notes) body.push(el('p', { className: 'muted', textContent: `ملاحظات: ${o.notes}` }));
+  body.push(el('p', { className: 'total', textContent: `${egMoney(o.total)} • ${Number(o.pcs).toLocaleString('ar-EG')} قطعة` }));
+  if (o.client_total != null && Number(o.client_total) !== Number(o.total)) body.push(el('p', { className: 'err', textContent: `السعر اللي ظهر للعميل كان ${egMoney(o.client_total)}، راجعه قبل التنفيذ.` }));
+  const actions = el('div', { className: 'actions' });
+  const openFile = (path, wrap) => run(async () => { const w = window.open('', '_blank'); const url = await orderFileUrl(token, path); w.location = wrap ? `shop.html?pdf=${encodeURIComponent(url)}` : url; });
+  if (o.files?.length) {
+    actions.append(el('button', { className: 'btn ok', textContent: 'الفاتورة ونسخة المطبعة', onclick: () => openFile(o.files[0], true) }));
+    o.files.forEach((f, i) => actions.append(el('button', { className: 'btn', textContent: i ? `ملف ${i + 1}` : 'ملف الطلب PDF', onclick: () => openFile(f, false) })));
+  } else body.push(el('p', { className: 'err', textContent: 'الملف ماتحملش مع الطلب، اطلب التصميم من العميل.' }));
+  actions.append(el('a', { className: 'btn', textContent: 'كلم العميل واتساب', href: `https://wa.me/${waNumber(o.phone)}?text=${encodeURIComponent(`أهلًا ${o.name}، بخصوص طلبك رقم ${o.code} من CMG`)}`, target: '_blank', rel: 'noopener' }));
+  body.push(actions);
+  return el('div', { className: 'card' }, ...body);
+}
+function renderOrders() {
+  const count = k => orders.filter(o => o.status === k).length;
+  $('#tabOrdersBtn').textContent = `الطلبات (${fmt(count('new'))} جديد)`;
+  $('#statusChips').replaceChildren(...[['all', 'الكل'], ...Object.entries(STATUS)].map(([k, v]) => el('button', { className: k === filter ? 'on' : '', textContent: `${v} (${fmt(k === 'all' ? orders.length : count(k))})`, onclick: () => { filter = k; renderOrders(); } })));
+  const list = orders.filter(o => filter === 'all' || o.status === filter);
+  $('#orders').replaceChildren(...(list.length ? list.map(orderCard) : [el('div', { className: 'card muted', textContent: 'مفيش طلبات هنا.' })]));
+}
+
 let shown = '';
 // Background checks redraw only when the list changed, and never while a name is being edited.
 async function refresh(background = false) {
-  const [pending, live] = await Promise.all([listPending(token), listApproved(token)]);
-  const ids = [...pending, ...live].map(d => d.id).join();
-  if (background && (ids === shown || document.activeElement?.closest?.('#pending'))) return;
+  const [pending, live, allOrders] = await Promise.all([listPending(token), listApproved(token), listOrders(token)]);
+  const ids = [...pending, ...live].map(d => d.id).join() + '|' + allOrders.map(o => o.id + o.status).join();
+  if (background && (ids === shown || document.activeElement?.closest?.('#pending, #orders'))) return;
   shown = ids;
+  orders = allOrders;
+  renderOrders();
+  $('#tabStoreBtn').textContent = `الاستور (${fmt(pending.length)} للمراجعة)`;
   $('#pendingTitle').textContent = `مستني المراجعة (${fmt(pending.length)})`;
   $('#pending').replaceChildren(...(pending.length ? pending.map(pendingCard) : [el('div', { className: 'card muted', textContent: 'مفيش تصاميم جديدة.' })]));
   $('#liveTitle').textContent = `منشور في الاستور (${fmt(live.length)})`;

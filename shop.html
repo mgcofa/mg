@@ -575,6 +575,14 @@ $('#invDl').onclick = e => busy(e.target, async () => save(await invoicePdf()));
 $('#invPng').onclick = e => busy(e.target, async () => save(new File([await canvasBytes(invCanvas)], `${$('#iCode').value}-invoice.png`, { type: 'image/png' })));
 $('#printShare').onclick = e => busy(e.target, async () => navigator.share({ files: [await printPdf()] }));
 $('#invShare').onclick = e => busy(e.target, async () => navigator.share({ files: [await invoicePdf()] }));
+
+// Opened from an order in the admin page: load that order's PDF right away.
+const fromOrder = new URLSearchParams(location.search).get('pdf');
+if (fromOrder?.startsWith('https://hizqjetoosbfraurupzv.supabase.co/storage/')) {
+  fetch(fromOrder).then(r => { if (!r.ok) throw new Error(r.status); return r.blob(); })
+    .then(b => load(new File([b], 'order.pdf', { type: 'application/pdf' })))
+    .catch(() => status('ماقدرناش نجيب ملف الطلب، جرّب تفتحه تاني من صفحة الطلبات.'));
+}
 </script>
 </body>
 </html>
