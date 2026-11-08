@@ -16,6 +16,11 @@ export default {
   printPrices: { front: 30, back: 75, sleeveR: 30, sleeveL: 30, hood: 50 },
   // Sport stripes down the sleeves or legs, added per piece. A first guess: set the factory's price.
   stripesPrice: 30,
+  // Store: storeFee is what the designer earns per piece, paid out once the balance reaches storePayoutMin.
+  // storeMarkup is how much of it is added to the customer's price; the rest comes out of the shop's profit. 0 = all from the profit, 30 = all from the customer.
+  storeFee: 30,
+  storeMarkup: 0,
+  storePayoutMin: 100,
   xxlSurcharge: 50,                       // added per 2XL piece
   bulkDiscounts: [[25, 0.20], [10, 0.10]], // [minimum pieces, discount], biggest first
 

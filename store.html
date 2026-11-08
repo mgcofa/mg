@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CMG Store</title>
+<link rel="icon" type="image/svg+xml" href="brand/mark.svg">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;800&family=Cairo:wght@400;600;700;900&family=Lalezar&display=swap" rel="stylesheet">
+<script src="i18n.js?v=38"></script>
+<style>
+  :root { --indigo: #4f46e5; --purple: #9333ea; --ink: #18181b; --paper: #f4f4f5; --line: #e4e4e7; --muted: #71717a; --wa: #25d366; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Cairo, Inter, system-ui, sans-serif; background: var(--paper); color: var(--ink); }
+  header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: #fff; border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+  header img { height: 34px; display: block; }
+  .grow { flex: 1; }
+  .btn { font: inherit; font-weight: 700; font-size: 14px; border: 1px solid var(--line); background: #fff; color: var(--ink); border-radius: 10px; padding: 7px 14px; cursor: pointer; text-decoration: none; display: inline-block; text-align: center; }
+  .btn.primary { background: var(--indigo); border-color: var(--indigo); color: #fff; }
+  .hero { background: linear-gradient(135deg, var(--indigo), var(--purple)); color: #fff; padding: 34px 16px; }
+  .hero > div { max-width: 1120px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between; }
+  .hero h1 { font-family: Lalezar, Cairo; font-weight: 400; font-size: 44px; margin: 0 0 4px; }
+  .hero p { margin: 0; font-size: 17px; opacity: .92; }
+  .hero .btn { background: #fff; color: var(--indigo); border: 0; font-size: 16px; padding: 11px 20px; }
+  main { max-width: 1120px; margin: 0 auto; padding: 18px 16px 60px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .chips button { font: inherit; font-weight: 700; font-size: 14px; border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 16px; cursor: pointer; }
+  .chips button.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; }
+  .card img { width: 100%; aspect-ratio: 1; object-fit: contain; background: #f1f1f4; display: block; }
+  .card .b { padding: 12px; display: flex; flex-direction: column; gap: 3px; flex: 1; }
+  .card h3 { font-size: 16px; margin: 0; overflow-wrap: anywhere; }
+  .card .by, .card .kind { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+  .card .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 10px; }
+  .card .price { font-weight: 900; font-size: 17px; }
+  .empty { background: #fff; border: 1px dashed #c9c9d1; border-radius: 16px; padding: 50px 20px; text-align: center; color: var(--muted); }
+  .empty p { font-size: 18px; margin: 0 0 14px; }
+  .how { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+  .how div { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px; font-weight: 700; font-size: 15px; }
+  .how b { color: var(--indigo); font-family: Inter; margin-inline-end: 8px; }
+  h2 { font-size: 19px; margin: 34px 0 12px; }
+  @media (max-width: 520px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .hero h1 { font-size: 36px; } .card .row { flex-direction: column; align-items: stretch; } }
+</style>
+</head>
+<body>
+<header>
+  <a href="./"><img src="logo.svg" alt="CMG"></a>
+  <div class="grow"></div>
+  <button class="btn" id="langBtn" data-i18n="lang.switch">English</button>
+  <a class="btn" href="./" data-i18n="store.emptyCta"></a>
+</header>
+<section class="hero"><div>
+  <div><h1 data-i18n="store.title"></h1><p data-i18n="store.lead"></p></div>
+  <a class="btn" href="./" id="cta"></a>
+</div></section>
+<main>
+  <div class="chips" id="chips"></div>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" hidden><p data-i18n="store.empty"></p><a class="btn primary" href="./" data-i18n="store.emptyCta"></a></div>
+  <h2 data-i18n="store.how"></h2>
+  <div class="how"><div><b>1</b><span data-i18n="store.how1"></span></div><div><b>2</b><span data-i18n="store.how2"></span></div><div><b>3</b><span id="how3"></span></div></div>
+</main>
+<script>i18n.apply();</script>
+<script type="module">
+import SHOP from './config.js?v=38';
+import { countVisit } from './counter.js?v=38';
+const $ = s => document.querySelector(s), T = i18n.t, money = n => i18n.money(n);
+const OFFER = SHOP.launchOffer?.off && Date.now() < Date.parse(SHOP.launchOffer.until) ? SHOP.launchOffer : null;
+const CATS = [['all', () => true], ['hoodies', p => p.startsWith('hoodie')], ['sweats', p => p.startsWith('crew') || p === 'quarter_zip'], ['pants', p => ['joggers', 'sweatpants', 'shorts'].includes(p)]];
+let items = [], cat = 'all';
+
+const priceOf = d => (SHOP.prices[d.product] ?? 0) - (OFFER?.off || 0) + d.sides.reduce((a, s) => a + SHOP.printPrices[s], 0) + (d.stripes ? SHOP.stripesPrice : 0) + SHOP.storeMarkup;
+function render() {
+  const fee = money(SHOP.storeFee);
+  $('#cta').textContent = T('store.cta', { fee }); $('#how3').textContent = T('store.how3', { fee });
+  $('#chips').innerHTML = '';
+  for (const [k] of CATS) {
+    const b = document.createElement('button');
+    b.textContent = T('store.' + k); b.className = k === cat ? 'on' : '';
+    b.onclick = () => { cat = k; render(); };
+    $('#chips').append(b);
+  }
+  $('#chips').hidden = !items.length;
+  const test = CATS.find(([k]) => k === cat)[1], shown = items.filter(d => test(d.product));
+  $('#empty').hidden = !!items.length;
+  const grid = $('#grid'); grid.innerHTML = '';
+  for (const d of shown) {
+    // Names come from people: always set as text, never as HTML.
+    const card = document.createElement('article'); card.className = 'card';
+    const img = Object.assign(document.createElement('img'), { src: `store/${d.code}.jpg`, alt: d.title, loading: 'lazy' });
+    const b = document.createElement('div'); b.className = 'b';
+    const add = (tag, cls, text) => { const el = document.createElement(tag); el.className = cls; el.textContent = text; return el; };
+    const row = add('div', 'row', '');
+    row.append(add('span', 'price', money(priceOf(d))));
+    const go = add('a', 'btn primary', T('store.order')); go.href = `./?store=${encodeURIComponent(d.code)}`; row.append(go);
+    b.append(add('h3', '', d.title), add('span', 'by', `${T('store.by')}: ${d.designer}`), add('span', 'kind', T('product.' + d.product)), row);
+    card.append(img, b); grid.append(card);
+  }
+}
+$('#langBtn').onclick = () => i18n.toggle();
+i18n.onChange?.(render);
+try { items = await fetch(`store/store.json?t=${Date.now()}`).then(r => r.ok ? r.json() : []); } catch { items = []; }
+render();
+countVisit();
+</script>
+</body>
+</html>

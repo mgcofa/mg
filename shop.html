@@ -167,7 +167,7 @@ async function load(file) {
     fill();
     $('#work').hidden = false;
     update();
-    if (data) return status(`طلب ${code}: ${sides.length} ملف طباعة.`);
+    if (data) return status(`طلب ${code}: ${sides.length} ملف طباعة.` + (data.store ? ` عمولة المصمم ${data.store.designer} (${data.store.code}): ${data.store.commission} ج.م، تتحول بعد تسليم الطلب ودفعه.` : ''));
     // Files from before the details were stored inside: read them off the order sheet picture.
     status(`طلب ${code}: بقرا بيانات الطلب من صفحة الملف… (أول مرة بتاخد دقيقة)`);
     const read = await readSheet(sheet);
@@ -328,7 +328,7 @@ function fill() {
   $('#iDiscount').value = d.discount ? Math.round(d.discount * 100) / 100 : 0; $('#iShip').value = 0;
   $('#lines').innerHTML = '';
   if (d.product) {
-    addLine(`${d.product} - ${d.print}${sizes ? ` (${sizes.replace(/ {3}/g, '، ')})` : ''}`, d.pcs, d.unit);
+    addLine(`${d.store ? `تصميم «${d.store.title}» (${d.store.code}) - ` : ''}${d.product} - ${d.print}${sizes ? ` (${sizes.replace(/ {3}/g, '، ')})` : ''}`, d.pcs, d.unit);
     if (d.set) addLine(`${d.set.item} (طقم، سادة)`, d.pcs, d.set.unit);
     if (d.partner) {
       const ps = Object.entries(d.partner.qty).map(([s, n]) => `${s}×${n}`).join('، ');
