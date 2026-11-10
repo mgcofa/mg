@@ -8,8 +8,8 @@
 <link rel="icon" type="image/svg+xml" href="brand/mark.svg">
 <link rel="apple-touch-icon" href="brand/mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cairo:wght@400;600;700;900&family=Tajawal:wght@500;800&family=Lalezar&family=Reem+Kufi:wght@700&family=Amiri:wght@700&family=Bebas+Neue&family=Oswald:wght@600&family=Pacifico&family=Playfair+Display:wght@700&family=Permanent+Marker&family=Anton&family=Montserrat:wght@800&family=Bangers&family=Lobster&family=Dancing+Script:wght@700&family=Righteous&family=Russo+One&family=Black+Ops+One&family=Abril+Fatface&family=Bungee&family=Great+Vibes&family=Caveat:wght@700&family=Changa:wght@700&family=El+Messiri:wght@700&family=Aref+Ruqaa:wght@700&family=Rakkas&family=Marhey:wght@700&family=Lemonada:wght@700&family=Kufam:wght@700&family=Jomhuria&family=Mirza:wght@700&family=Vibes&display=swap" rel="stylesheet">
-<script src="i18n.js?v=45"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cairo:wght@400;600;700;900&family=Tajawal:wght@500;800&family=Lalezar&family=Reem+Kufi:wght@700&family=Amiri:wght@700&family=Bebas+Neue&family=Oswald:wght@600&family=Pacifico&family=Playfair+Display:wght@700&family=Permanent+Marker&family=Anton&family=Montserrat:wght@800&family=Bangers&family=Lobster&family=Dancing+Script:wght@700&family=Righteous&family=Russo+One&family=Black+Ops+One&family=Abril+Fatface&family=Bungee&family=Great+Vibes&family=Caveat:wght@700&family=Changa:wght@700&family=El+Messiri:wght@700&family=Aref+Ruqaa:wght@700&family=Rakkas&family=Marhey:wght@700&family=Lemonada:wght@700&family=Kufam:wght@700&family=Jomhuria&family=Mirza:wght@700&family=Vibes&family=Fira+Code:wght@500;700&display=swap" rel="stylesheet">
+<script src="i18n.js?v=46"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <!-- Import maps need Safari 16.4+; this polyfill makes older iPhones load the 3D modules too. -->
@@ -536,7 +536,7 @@ fabric.Text.prototype.measureLine = function (i) {
 // Design fonts. Arabic ones also carry Latin glyphs, so mixed text still renders.
 const FONTS = {
   latin: ['Bebas Neue', 'Anton', 'Oswald', 'Montserrat', 'Bungee', 'Russo One', 'Black Ops One', 'Bangers', 'Righteous', 'Permanent Marker',
-    'Pacifico', 'Lobster', 'Dancing Script', 'Great Vibes', 'Caveat', 'Playfair Display', 'Abril Fatface', 'Inter'],
+    'Pacifico', 'Lobster', 'Dancing Script', 'Great Vibes', 'Caveat', 'Playfair Display', 'Abril Fatface', 'Inter', 'Fira Code'],
   arabic: ['Lalezar', 'Cairo', 'Tajawal', 'Changa', 'Reem Kufi', 'Kufam', 'El Messiri', 'Lemonada', 'Marhey', 'Rakkas', 'Jomhuria',
     'Aref Ruqaa', 'Amiri', 'Mirza', 'Vibes'],
 };
@@ -1468,7 +1468,7 @@ const PAIRS = Object.fromEntries([
 ].map(([a, b]) => ['couples-' + a, 'couples-' + b]).concat(
   [['avocadoHim', 'avocadoHer'], ['bearHim', 'bearHer'], ['catHim', 'catHer'], ['ghostHim', 'ghostHer'], ['penguinHim', 'penguinHer'],
    ['bee', 'flower'], ['cookie', 'milk'], ['dinoHim', 'dinoHer'], ['foxHim', 'bunnyHer']].map(([a, b]) => ['toons-' + a, 'toons-' + b]),
-  [['masry-ma3ak', 'masry-ma3aki'], ['masry-ebnBalad', 'masry-bentBalad']],
+  [['masry-ma3ak', 'masry-ma3aki'], ['masry-ebnBalad', 'masry-bentBalad'], ['code-ctrlC', 'code-ctrlV'], ['code-frontend', 'code-backend']],
 ).flatMap(([a, b]) => [[a, b], [b, a]]));
 const emptySide = () => ({ version: fabric.version, objects: [] });
 const blankQty = () => ({ S: 0, M: 1, L: 0, XL: 0, '2XL': 0 });
