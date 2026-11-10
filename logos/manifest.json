@@ -234,6 +234,29 @@
   ]
  },
  {
+  "cat": "code",
+  "items": [
+   "code-tag",
+   "code-bracesHeart",
+   "code-helloWorld",
+   "code-whileAlive",
+   "code-myMachine",
+   "code-sleep404",
+   "code-commitHob",
+   "code-sudoCoffee",
+   "code-binaryLove",
+   "code-notBug",
+   "code-mobarmeg",
+   "code-semicolon",
+   "code-loading",
+   "code-coffeePP",
+   "code-ctrlC",
+   "code-ctrlV",
+   "code-frontend",
+   "code-backend"
+  ]
+ },
+ {
   "cat": "sports",
   "items": [
    "ball-football",
