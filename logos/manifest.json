@@ -61,6 +61,11 @@
  {
   "cat": "varsity",
   "items": [
+   "varsity-nyc",
+   "varsity-cairoVarsity",
+   "varsity-alexVarsity",
+   "varsity-gizaVarsity",
+   "varsity-masrVarsity",
    "varsity-athletics",
    "varsity-cairoBall",
    "varsity-natural",
@@ -286,6 +291,18 @@
    "code-arabicHello",
    "code-frontend",
    "code-backend"
+  ]
+ },
+ {
+  "cat": "girls",
+  "items": [
+   "girls-loveBfly",
+   "girls-hopeBfly",
+   "girls-glowBfly",
+   "girls-dreamBfly",
+   "girls-helmBfly",
+   "girls-freeBfly",
+   "girls-worldMap"
   ]
  },
  {
